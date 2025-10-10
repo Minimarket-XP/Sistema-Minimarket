@@ -1,12 +1,12 @@
-## Formularios y componentes reutilizables - PyQt5 Version
+## Formularios y componentes reutilizables
 
-import os
-from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QFileDialog, QMessageBox, QInputDialog, QFrame)
+from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
+                             QLineEdit, QPushButton, QComboBox, QFileDialog, 
+                             QMessageBox, QInputDialog, QFrame)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap, QFont
-from PIL import Image
 from views.settings import *
-from models.helpers import *
+from models.helpers import cargar_categorias, cargar_tipos_corte, validar_numero
 
 class ProductoForm(QDialog):    
     def __init__(self, parent, title="Producto", producto_data=None):
@@ -22,29 +22,50 @@ class ProductoForm(QDialog):
         self.entries = {}
         
         self.crearInterfaz()
-        if producto_data is not None:
+        self._cargar_datos_si_existe()
+    
+    def _cargar_datos_si_existe(self):
+        """Carga datos del producto si existe"""
+        if self.producto_data is not None:
             # Verificar si es pandas Series o dict y tiene datos
-            if hasattr(producto_data, 'empty'):
-                if not producto_data.empty:
+            if hasattr(self.producto_data, 'empty'):
+                if not self.producto_data.empty:
                     self.llenarCampos()
-            elif producto_data:  # Para dict u otros tipos
+            elif self.producto_data:  # Para dict u otros tipos
                 self.llenarCampos()
     
-    def crearInterfaz(self):
-        # Layout principal
+    def crearInterfaz(self): # → Interfaz del formulario
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(15)
         
-        # Título
+        # Título dinámico
+        titulo = self._get_titulo()
+        titulo_label = self._crear_titulo_label(titulo)
+        main_layout.addWidget(titulo_label)
+        
+        # Campos de entrada optimizados
+        self._crear_campos_entrada(main_layout)
+        
+        # Categoría y tipo de corte
+        self._crear_comboboxes(main_layout)
+        
+        # Selección de imagen
+        self._crear_seccion_imagen(main_layout)
+        
+        # Botones
+        self._crear_botones(main_layout)
+    
+    def _get_titulo(self): #→ Determina el título del formulario
         es_modificar = False
         if self.producto_data is not None:
             if hasattr(self.producto_data, 'empty'):
                 es_modificar = not self.producto_data.empty
             else:
                 es_modificar = bool(self.producto_data)
-        
-        titulo = "Modificar Producto" if es_modificar else "Registrar Producto"
+        return "Modificar Producto" if es_modificar else "Registrar Producto"
+    
+    def _crear_titulo_label(self, titulo): # → Label del título
         titulo_label = QLabel(titulo)
         titulo_label.setAlignment(Qt.AlignCenter)
         titulo_label.setStyleSheet(f"""
@@ -56,10 +77,11 @@ class ProductoForm(QDialog):
                 margin-bottom: 10px;
             }}
         """)
-        main_layout.addWidget(titulo_label)
-        
-        # Campos de entrada
+        return titulo_label
+    
+    def _crear_campos_entrada(self, main_layout): # → Crea los campos de entrada
         campos = [("Nombre", ""), ("Precio", "0"), ("Stock inicial", "0"), ("Stock Mínimo", "0")]
+        
         for label, default in campos:
             campo_layout = QHBoxLayout()
             
@@ -67,29 +89,33 @@ class ProductoForm(QDialog):
             label_widget.setFixedWidth(100)
             label_widget.setStyleSheet("font-weight: bold; color: #333;")
             
-            entry = QLineEdit()
-            entry.setStyleSheet("""
-                QLineEdit {
-                    border: 1px solid #ddd;
-                    border-radius: 4px;
-                    padding: 8px;
-                    font-size: 12px;
-                }
-                QLineEdit:focus {
-                    border: 2px solid #4285F4;
-                }
-            """)
-            
-            if self.producto_data is None or self.producto_data.empty:
-                entry.setText(default)
-            
+            entry = self._crear_line_edit(default)
             self.entries[label] = entry
             
             campo_layout.addWidget(label_widget)
             campo_layout.addWidget(entry)
-            
             main_layout.addLayout(campo_layout)
+    
+    def _crear_line_edit(self, default_value, entry=None): # → QLineEdit con estilos
+        entry = QLineEdit()
+        entry.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                padding: 8px;
+                font-size: 12px;
+            }
+            QLineEdit:focus {
+                border: 2px solid #4285F4;
+            }
+        """)
         
+        if self.producto_data is None or (hasattr(self.producto_data, 'empty') and self.producto_data.empty):
+            entry.setText(default_value)
+        
+        return entry
+    
+    def _crear_comboboxes(self, main_layout): # → Crea comboboxes de categoría y tipo de cortes
         # Categoría
         categoria_layout = QHBoxLayout()
         categoria_label = QLabel("Categoría:")
@@ -98,7 +124,64 @@ class ProductoForm(QDialog):
         
         self.categoria_cb = QComboBox()
         self.categoria_cb.addItems(cargar_categorias())
-        self.categoria_cb.setStyleSheet("""
+        self.categoria_cb.setStyleSheet(self._get_combobox_style())
+        
+        btn_nueva_categoria = self._crear_boton_secundario("Nueva...", self.agregarCategoriasRapido)
+        
+        categoria_layout.addWidget(categoria_label)
+        categoria_layout.addWidget(self.categoria_cb)
+        categoria_layout.addWidget(btn_nueva_categoria)
+        main_layout.addLayout(categoria_layout)
+        
+        # Tipo de corte
+        corte_layout = QHBoxLayout()
+        corte_label = QLabel("Tipo de Corte:")
+        corte_label.setFixedWidth(100)
+        corte_label.setStyleSheet("font-weight: bold; color: #333;")
+        
+        self.corte_cb = QComboBox()
+        self.corte_cb.addItems(cargar_tipos_corte())
+        self.corte_cb.setStyleSheet(self._get_combobox_style())
+        
+        corte_layout.addWidget(corte_label)
+        corte_layout.addWidget(self.corte_cb)
+        main_layout.addLayout(corte_layout)
+    
+    def _crear_seccion_imagen(self, main_layout):
+        """Crea la sección de selección de imagen"""
+        imagen_layout = QHBoxLayout()
+        imagen_label = QLabel("Imagen (opcional):")
+        imagen_label.setFixedWidth(130)
+        imagen_label.setStyleSheet("font-weight: bold; color: #333;")
+        
+        btn_seleccionar = self._crear_boton_info("Seleccionar", self.seleccionarImagen)
+        
+        self.img_info_label = QLabel("")
+        self.img_info_label.setStyleSheet("color: #6c757d; font-size: 11px;")
+        
+        imagen_layout.addWidget(imagen_label)
+        imagen_layout.addWidget(btn_seleccionar)
+        imagen_layout.addWidget(self.img_info_label)
+        main_layout.addLayout(imagen_layout)
+        
+        # Vista previa de imagen
+        self.imagen_viewer = ImagenViewer()
+        main_layout.addWidget(self.imagen_viewer)
+    
+    def _crear_botones(self, main_layout):
+        """Crea los botones de acción"""
+        botones_layout = QHBoxLayout()
+        
+        btn_cancelar = self._crear_boton_secundario("Cancelar", self.reject)
+        btn_guardar = self._crear_boton_primario("Guardar", self.validarYGuardar)
+        
+        botones_layout.addWidget(btn_cancelar)
+        botones_layout.addWidget(btn_guardar)
+        main_layout.addLayout(botones_layout)
+    
+    def _get_combobox_style(self):
+        """Retorna el estilo para comboboxes"""
+        return """
             QComboBox {
                 border: 1px solid #ddd;
                 border-radius: 4px;
@@ -108,10 +191,12 @@ class ProductoForm(QDialog):
             QComboBox:focus {
                 border: 2px solid #4285F4;
             }
-        """)
-        
-        btn_nueva_categoria = QPushButton("Nueva...")
-        btn_nueva_categoria.setStyleSheet("""
+        """
+    
+    def _crear_boton_secundario(self, texto, funcion):
+        """Crea un botón con estilo secundario"""
+        boton = QPushButton(texto)
+        boton.setStyleSheet("""
             QPushButton {
                 background-color: #6c757d;
                 color: white;
@@ -124,49 +209,13 @@ class ProductoForm(QDialog):
                 background-color: #5a6268;
             }
         """)
-        btn_nueva_categoria.clicked.connect(self.agregarCategoriasRapido)
-        
-        categoria_layout.addWidget(categoria_label)
-        categoria_layout.addWidget(self.categoria_cb)
-        categoria_layout.addWidget(btn_nueva_categoria)
-        
-        main_layout.addLayout(categoria_layout)
-        
-        # Tipo de corte
-        corte_layout = QHBoxLayout()
-        corte_label = QLabel("Tipo de Corte:")
-        corte_label.setFixedWidth(100)
-        corte_label.setStyleSheet("font-weight: bold; color: #333;")
-        
-        self.corte_cb = QComboBox()
-        tipos_corte = ["", "Entero", "Bistec", "Molida", "Churrasco", "Costilla", 
-                      "Filete", "Pechuga", "Pierna", "Alitas", "Trozos", "Otros"]
-        self.corte_cb.addItems(tipos_corte)
-        self.corte_cb.setStyleSheet("""
-            QComboBox {
-                border: 1px solid #ddd;
-                border-radius: 4px;
-                padding: 8px;
-                font-size: 12px;
-            }
-            QComboBox:focus {
-                border: 2px solid #4285F4;
-            }
-        """)
-        
-        corte_layout.addWidget(corte_label)
-        corte_layout.addWidget(self.corte_cb)
-        
-        main_layout.addLayout(corte_layout)
-        
-        # Imagen
-        imagen_layout = QHBoxLayout()
-        imagen_label = QLabel("Imagen (opcional):")
-        imagen_label.setFixedWidth(130)
-        imagen_label.setStyleSheet("font-weight: bold; color: #333;")
-        
-        btn_seleccionar = QPushButton("Seleccionar")
-        btn_seleccionar.setStyleSheet("""
+        boton.clicked.connect(funcion)
+        return boton
+    
+    def _crear_boton_info(self, texto, funcion):
+        """Crea un botón con estilo info"""
+        boton = QPushButton(texto)
+        boton.setStyleSheet("""
             QPushButton {
                 background-color: #17a2b8;
                 color: white;
@@ -179,12 +228,28 @@ class ProductoForm(QDialog):
                 background-color: #138496;
             }
         """)
-        btn_seleccionar.clicked.connect(self.seleccionarImagen)
-        
-        self.img_info_label = QLabel("")
-        self.img_info_label.setStyleSheet("color: #6c757d; font-size: 11px;")
-        
-        imagen_layout.addWidget(imagen_label)
+        boton.clicked.connect(funcion)
+        return boton
+    
+    def _crear_boton_primario(self, texto, funcion):
+        """Crea un botón con estilo primario"""
+        boton = QPushButton(texto)
+        boton.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {THEME_COLOR};
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 10px 20px;
+                font-size: 12px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: #0056b3;
+            }}
+        """)
+        boton.clicked.connect(funcion)
+        return boton
         imagen_layout.addWidget(btn_seleccionar)
         imagen_layout.addWidget(self.img_info_label)
         
@@ -215,7 +280,7 @@ class ProductoForm(QDialog):
         """)
         btnguardar.clicked.connect(self.guardar)
         
-        btn_cancelar = QPushButton("❌ Cancelar")
+        btn_cancelar = QPushButton("Cancelar")
         btn_cancelar.setStyleSheet(f"""
             QPushButton {{
                 background-color: {ERROR_COLOR};
@@ -347,7 +412,7 @@ class ProductoForm(QDialog):
         raise NotImplementedError("Debe implementarse en la clase hija")
 
 class ImagenViewer(QLabel):
-    def __init__(self, parent, **kwargs):
+    def __init__(self, parent = None, **kwargs):
         super().__init__(parent)
         self.setAlignment(Qt.AlignCenter)
         self.setStyleSheet("""
@@ -369,9 +434,13 @@ class ImagenViewer(QLabel):
             
             if ruta_imagen and os.path.exists(ruta_imagen):
                 pixmap = QPixmap(ruta_imagen)
-                scaled_pixmap = pixmap.scaled(tamaño[0], tamaño[1], Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                self.setPixmap(scaled_pixmap)
-                self.imagen_actual = scaled_pixmap
+                # Verificar que el pixmap no sea nulo antes de escalar
+                if not pixmap.isNull():
+                    scaled_pixmap = pixmap.scaled(tamaño[0], tamaño[1], Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    self.setPixmap(scaled_pixmap)
+                    self.imagen_actual = scaled_pixmap
+                else:
+                    self.limpiar()
             else:
                 self.limpiar()
         except Exception as e:
@@ -382,7 +451,7 @@ class ImagenViewer(QLabel):
     
     def limpiar(self):
         self.clear()
-        self.setText("📷 Vista previa de imagen")
+        self.setText("Vista previa de imagen")
         self.setStyleSheet("""
             QLabel {
                 border: 2px dashed #ccc;

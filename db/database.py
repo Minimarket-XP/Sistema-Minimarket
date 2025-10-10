@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
 ## Configuración y manejo de la base de datos SQLite
-## Sistema de IDs P0001 implementado con tabla de secuencias
 
 import sqlite3
 import os
@@ -168,9 +166,8 @@ class Database:
         conn.commit()
         conn.close()
     
-    def _insertar_datos_iniciales(self, cursor):
-        """Inserta datos iniciales en la base de datos"""
-        
+    def _insertar_datos_iniciales(self, cursor): # → Insertar datos iniciales del minimarket
+
         # Insertar usuario administrador por defecto
         cursor.execute('''
             INSERT OR IGNORE INTO empleados (nombre, apellido, usuario, contraseña, rol)
@@ -198,7 +195,7 @@ class Database:
         configuraciones = [
             ('nombre_empresa', 'Minimarket Don Manuelito', 'Nombre de la empresa'),
             ('ruc_empresa', '10730291529', 'RUC de la empresa'),
-            ('direccion_empresa', 'Av. Principal 123', 'Dirección de la empresa'),
+            ('direccion_empresa', 'Jr. José Francisco de Zela 1338', 'Dirección de la empresa'),
             ('telefono_empresa', '123-456-789', 'Teléfono de la empresa'),
             ('moneda', 'PEN', 'Moneda utilizada'),
             ('igv', '18', 'Porcentaje de IGV')

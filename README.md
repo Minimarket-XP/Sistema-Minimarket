@@ -1,12 +1,12 @@
-# 🏪 Sistema Minimarket Don Manuelito
+# Sistema Minimarket Don Manuelito
 
 APLICACIÓN DE GESTIÓN DE VENTAS E INVENTARIO EN MINIMARKET "Don Manuelito"
 
-## 📋 Descripción
+## Descripción
 
-Sistema de gestión completo para minimarket que incluye manejo de inventario, ventas, empleados y reportes. Desarrollado siguiendo metodología SCRUM con arquitectura modular escalable.
+Sistema de gestión completo para minimarket que incluye manejo de inventario, ventas, empleados y reportes. Desarrollado siguiendo la metodología SCRUM con arquitectura modular escalable.
 
-## 🚀 Estado del Proyecto
+## Estado del Proyecto
 
 **Sprint 1 - PROCESO** - FUNCIONALIDAD MÍNIMA VIABLE
 - CRUD completo de productos
@@ -14,7 +14,7 @@ Sistema de gestión completo para minimarket que incluye manejo de inventario, v
 - Sistema de categorías
 - Interfaz moderna con PyQt5
 
-## 🛠️ Tecnologías
+## Tecnologías
 
 - **Python 3.x**
 - **PyQt5** - Interfaz gráfica moderna y profesional
@@ -22,7 +22,7 @@ Sistema de gestión completo para minimarket que incluye manejo de inventario, v
 - **pandas** - Manejo de datos
 - **Pillow (PIL)** - Procesamiento de imágenes
 
-## 📦 Instalación
+## Instalación
 
 1. **Clonar el repositorio**
 ```bash
@@ -46,31 +46,40 @@ pip install -r requirements.txt
 python main.py
 ```
 
-## 📁 Estructura del Proyecto
+## Estructura del Proyecto
 
 ```
 Sistema-Minimarket-wa/
-├── main.py                 # Punto de entrada PyQt5
-├── requirements.txt        # Dependencias con PyQt5
-├── config/
-│   └── settings.py        # Configuraciones
+├── gitignore                  # Exclusiones git
+├── buid_exe.ps1               # Script PowerShell para crear .exe
+├── main.py                    # Punto de entrada aplicación
+├── README.md                  # Documentación proyecto
+├── requirements.txt           # Lista dependencias python
+├── S_Minimarket_Fixed.espec   # Configuración PyInstaller
+├── temp_minimarket.jpg        # Imagen temporal
 ├── models/
-│   ├── base_model.py      # CRUD base SQLite
-│   ├── producto.py        # Lógica productos
-│   └── empleado.py        # Lógica empleados
+│   ├── base_model.py          # CRUD base SQLite
+│   ├── empleado.py            # Lógica empleados
+│   ├── helpers.py             # Funciones Auxiliares
+│   ├── producto.py            # Lógica productos
+│   └── venta.py               # Lógica ventas
 ├── views/
-│   ├── login.py           # Login PyQt5
-│   ├── dashboard.py       # Dashboard PyQt5
-│   ├── inventario.py      # Inventario PyQt5
+│   ├── dashboard.py           # Interfaz principal
+│   ├── empleados.py           # Gestión empleados
+│   ├── inventario.py          # Gestión inventario
+│   ├── login.py               # Pantalla login
+│   ├── settings.py            # Configuraciones globales
+│   ├── ventas.py              # Proceso ventas
 │   └── components/
-│       └── forms.py       # Formularios PyQt5
-├── utils/
-│   └── helpers.py         # Funciones auxiliares
-├── db/                    # Base de datos SQLite
-└── reportes/              # Reportes generados
+│       └── forms.py           # Formularios reutilizables
+├── db/
+│   ├── database.py            # Conexión SQLite
+│   ├── minimarket.db          # Base datos principal
+│   └── imagenes/              # Imágenes productos/logos
+├── .venv/                     # Entorno virtual Python (286 MB)
 ```
 
-## ✨ Funcionalidades
+## Funcionalidades
 
 ###  Sprint 1 - FUNCIONALIDAD MÍNIMA VIABLE
 | Cod. Historia     | Descripción de la Historia    | Puntos    |
@@ -84,7 +93,7 @@ Sistema-Minimarket-wa/
 | **HUO002**        | Como almacenero, quiero actualizar la información de un producto (precio, stock, estado, descripción) para mantener el inventario al día | **5** |
 | **HUI003**        | Como cajero, quiero aplicar descuentos a productos o al total de la venta para poder ofrecer promociones a los clientes.         | **5** |  
 
-### 🚧 Próximos Sprints
+### Próximos Sprints
 - [ ] **Sprint 2**: FUNCIONALIDADES COMPLEMENTARIAS
 - [ ] **Sprint 3**: OPTIMIZACIÓN Y PERFORMANCE   
 - [ ] **Sprint 4**: EXPANSIÓN DE NEGOCIO
@@ -94,28 +103,28 @@ Sistema-Minimarket-wa/
 
 | Autor             | Cargo      |
 |-------------------|------------|
-| **Arif Khan M., Rayyan**  | **Developer**  |
-| **Campos A.,	Gianfranco**     | **Scrum Master** |
-| **Choncen G., Daniela**     | **Developer** |
-| **Perez R.,	Hugo**     | **Developer** |
-| **Rodriguez M., Rodrigo**     | **Developer** |
-| **Zumaeta C., Adriel**     | **Developer** |
+| **Arif Khan Montoya, Rayyan**  | **Developer**  |
+| **Campos Acevedo,	Gianfranco**     | **Scrum Master** |
+| **Choncen Gutierrez, Daniela**     | **Developer** |
+| **Perez Rocha,	Hugo**     | **Developer** |
+| **Rodriguez Malca, Rodrigo**     | **Developer** |
+| **Zumaeta Calderon, Adriel**     | **Developer** |
 
 ---
 
-## 📦 EJECUTABLE DISTRIBUIBLE
+## EJECUTABLE DISTRIBUIBLE
 
-### 🚀 Versión Standalone para Distribución
+### Versión para Distribución
 
 El sistema está disponible como **ejecutable independiente** que no requiere Python instalado:
 
-#### 📥 **Descarga y Uso:**
+#### **Descarga y Uso:**
 - **Archivo:** `SistemaMinimarket_Fixed.exe` (102.4 MB)
 - **Ubicación:** `/dist/SistemaMinimarket_Fixed.exe`
 - **Plataforma:** Windows 10/11
-- **Instalación:** ❌ **NO REQUIERE** - Ejecutar directamente
+- **Instalación:** **NO REQUIERE** - Ejecutar directamente
 
-#### ✅ **Características del Ejecutable:**
+#### **Características del Ejecutable:**
 - 🏪 **Sistema completo** con todas las funcionalidades
 - 🔐 **Login integrado** (Usuario: `admin`, Contraseña: `admin`)
 - 📦 **Gestión de inventarios** con sistema P0001
@@ -124,14 +133,14 @@ El sistema está disponible como **ejecutable independiente** que no requiere Py
 - 🗄️ **Base de datos SQLite** incluida
 - 🖼️ **Interfaz PyQt5** profesional
 
-#### 🎯 **Para Distribución Comercial:**
+#### **Para Distribución Comercial:**
 1. **Copiar** solo el archivo `SistemaMinimarket_Fixed.exe`
 2. **Compartir** con cualquier PC Windows
 3. **Ejecutar** con doble clic
 4. **¡Listo!** - Sistema completamente funcional
 
-#### 📋 **Dependencias Incluidas:**
-- Python 3.13 Runtime
+#### **Dependencias Incluidas:**
+- Python 3.12
 - PyQt5 (Interfaz gráfica)  
 - SQLite (Base de datos)
 - Pandas + OpenPyXL (Reportes Excel)
@@ -139,11 +148,11 @@ El sistema está disponible como **ejecutable independiente** que no requiere Py
 - PIL/Pillow (Imágenes)
 - Todas las librerías del sistema
 
-#### ⚙️ **Scripts de Compilación:**
+#### **Scripts de Compilación:**
 - `crear_exe_simple.bat` - Script principal para generar ejecutable
 - `build_exe.ps1` - Script PowerShell alternativo con validaciones
 - `SistemaMinimarket_Fixed.spec` - Configuración PyInstaller optimizada
 
-> 💡 **Nota:** El ejecutable incluye correcciones de compatibilidad y todas las dependencias de Visual C++ Runtime para funcionamiento sin errores en cualquier PC Windows.
+> **Nota:** El ejecutable incluye correcciones de compatibilidad y todas las dependencias de Visual C++ Runtime para funcionamiento sin errores en cualquier PC Windows.
 
 ---
