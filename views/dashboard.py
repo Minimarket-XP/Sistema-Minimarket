@@ -1,6 +1,6 @@
-## Dashboard principal - PyQt5 Optimizado
-
-from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
+## Dashboard principal
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QLabel, QPushButton, QFrame, QStackedWidget)
 from PyQt5.QtCore import Qt
 from views.settings import *
@@ -9,14 +9,14 @@ class Dashboard(QMainWindow):
     def __init__(self, usuario):
         super().__init__()
         self.usuario = usuario
-        self.usuario_rol = self._obtener_rol_usuario()
+        self.usuario_rol = self.obtener_rol_usuario()
         self.setWindowTitle(f"{APP_NAME} - {usuario}")
+        self.setWindowIcon(QIcon(APP_ICON))
         self.showMaximized()
     
-        self._crear_Robotofaz()
+        self.interfaz_principal()
     
-    def _obtener_rol_usuario(self):
-        """Obtiene el rol del usuario actual"""
+    def obtener_rol_usuario(self): # → Obtener el rol de usuario activo
         try:
             from models.empleado import EmpleadoModel
             empleado_model = EmpleadoModel()
@@ -26,13 +26,13 @@ class Dashboard(QMainWindow):
             print(f"Error obteniendo rol de usuario: {e}")
             return 'empleado'
     
-    def _centrar_ventana(self):
+    def centrar_ventana(self):
         from PyQt5.QtWidgets import QApplication
         screen = QApplication.primaryScreen().geometry()
         size = self.geometry()
         self.move((screen.width() - size.width()) // 2, (screen.height() - size.height()) // 2)
     
-    def _crear_Robotofaz(self):
+    def interfaz_principal(self):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         
@@ -42,7 +42,7 @@ class Dashboard(QMainWindow):
         main_layout.setSpacing(0)
         
         # Header
-        header = self._crear_header()
+        header = self.crear_header()
         main_layout.addWidget(header)
         
         # Contenido
@@ -50,7 +50,7 @@ class Dashboard(QMainWindow):
         content_layout.setContentsMargins(0, 0, 0, 0)
         
         # Menú lateral
-        menu = self._crear_menu()
+        menu = self.menu_lateral()
         content_layout.addWidget(menu)
         
         # Área principal
@@ -62,31 +62,44 @@ class Dashboard(QMainWindow):
         content_widget.setLayout(content_layout)
         main_layout.addWidget(content_widget, 1)
         
-        self._mostrar_bienvenida()
+        self.bienvenida_sistema()
     
-    def _crear_header(self):
+    def crear_header(self): # → Cabecero
         header = QFrame()
         header.setStyleSheet(f"background-color: {THEME_COLOR}; color: white;")
-        header.setFixedHeight(85)
+        header.setFixedHeight(102)
         
         layout = QHBoxLayout(header)
         layout.setContentsMargins(20, 10, 20, 10)
         
-        # Título
-        titulo = QLabel(f"🏪 {APP_NAME}")
-        titulo.setStyleSheet("color: white; font-size: 22px; font-weight: bold;")
-        layout.addWidget(titulo)
+        # Título con ícono
+        titulo_layout = QHBoxLayout()
+        
+        # Ícono de la aplicación
+        icono_label = QLabel()
+        pixmap = QIcon(APP_ICON).pixmap(54, 54)  # Tamaño del ícono
+        icono_label.setPixmap(pixmap)
+        titulo_layout.addWidget(icono_label)
+        
+        # Nombre de la aplicación
+        titulo = QLabel(APP_NAME)
+        titulo.setStyleSheet("color: white; font-size: 22px; font-weight: bold; margin-left: 10px;")
+        titulo_layout.addWidget(titulo)
+        
+        titulo_widget = QWidget()
+        titulo_widget.setLayout(titulo_layout)
+        layout.addWidget(titulo_widget)
         
         layout.addStretch()
         
         # Usuario
         usuario = QLabel(f"👤 {self.usuario}")
-        usuario.setStyleSheet("color: white; font-size: 20px;")
+        usuario.setStyleSheet("color: white; font-family: Roboto; font-size: 20px;")
         layout.addWidget(usuario)
         
         return header
     
-    def _crear_menu(self):
+    def menu_lateral(self):
         menu = QFrame()
         menu.setStyleSheet("background-color: #b9c2c4;")
         menu.setFixedWidth(230)
@@ -137,7 +150,7 @@ class Dashboard(QMainWindow):
             QPushButton {{
                 background-color: {ERROR_COLOR};
                 color: white;
-                border: none;
+                border: 2 px solid;
                 padding: 14px;
                 font-weight: bold;
             }}
@@ -150,18 +163,18 @@ class Dashboard(QMainWindow):
         
         return menu
     
-    def _mostrar_bienvenida(self):
+    def bienvenida_sistema(self):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setAlignment(Qt.AlignCenter)
         
         titulo = QLabel("🏪 Bienvenido al Sistema")
         titulo.setAlignment(Qt.AlignCenter)
-        titulo.setStyleSheet("font-size: 24px; font-weight: bold; color: #2c3e50; margin: 20px;")
+        titulo.setStyleSheet("font-size: 54px; font-weight: bold; color: #2c3e50; margin: 20px;")
         
         subtitulo = QLabel("Selecciona un módulo del menú para comenzar")
         subtitulo.setAlignment(Qt.AlignCenter)
-        subtitulo.setStyleSheet("font-size: 14px; color: #7f8c8d;")
+        subtitulo.setStyleSheet("font-size: 20px; color: #7f8c8d;")
         
         layout.addWidget(titulo)
         layout.addWidget(subtitulo)
@@ -169,59 +182,59 @@ class Dashboard(QMainWindow):
         self.main_content.addWidget(widget)
         self.main_content.setCurrentWidget(widget)
     
-    def _limpiar_contenido(self):
+    def limpiar_contenido(self):
         while self.main_content.count():
             child = self.main_content.widget(0)
             self.main_content.removeWidget(child)
             child.setParent(None)
     
     def mostrar_inventario(self):
-        self._limpiar_contenido()
+        self.limpiar_contenido()
         try:
             from views.inventario import InventarioFrame
             inventario = InventarioFrame(self)
             self.main_content.addWidget(inventario)
             self.main_content.setCurrentWidget(inventario)
         except Exception as e:
-            self._mostrar_error("📦 Inventario", str(e))
+            self.mostrar_error("📦 Inventario", str(e))
     
     def mostrar_ventas(self):
-        self._limpiar_contenido()
+        self.limpiar_contenido()
         try:
             from views.ventas import VentasFrame
             ventas = VentasFrame(self)
             self.main_content.addWidget(ventas)
             self.main_content.setCurrentWidget(ventas)
         except Exception as e:
-            self._mostrar_error("💰 Ventas", f"Error al cargar módulo: {str(e)}")
+            self.mostrar_error("💰 Ventas", f"Error al cargar módulo: {str(e)}")
     
     def mostrar_reportes(self):
-        self._limpiar_contenido()
-        self._mostrar_error("📊 Reportes", "Próximamente en Sprint 3")
+        self.limpiar_contenido()
+        self.mostrar_error("📊 Reportes", "Próximamente en Sprint 2")
     
     def mostrar_empleados(self):
-        self._limpiar_contenido()
+        self.limpiar_contenido()
         try:
             from views.empleados import EmpleadosWidget
             empleados_widget = EmpleadosWidget(self.usuario_rol)
             self.main_content.addWidget(empleados_widget)
             self.main_content.setCurrentWidget(empleados_widget)
         except Exception as e:
-            self._mostrar_error("👥 Empleados", f"Error al cargar módulo: {str(e)}")
+            self.mostrar_error("👥 Empleados", f"Error al cargar módulo: {str(e)}")
     
     def mostrar_compras(self):
-        self._limpiar_contenido()
-        self._mostrar_error("🛒 Compras", "Próximamente en Sprint 4")
+        self.limpiar_contenido()
+        self.mostrar_error("🛒 Compras", "Próximamente en Sprint 2")
     
     def mostrar_despachos(self):
-        self._limpiar_contenido()
-        self._mostrar_error("🚛 Despachos", "Próximamente en Sprint 4")
+        self.limpiar_contenido()
+        self.mostrar_error("🚛 Despachos", "Próximamente en Sprint 2")
     
     def mostrar_configuracion(self):
-        self._limpiar_contenido()
-        self._mostrar_error("⚙️ Configuración", "Próximamente en Sprint 4")
+        self.limpiar_contenido()
+        self.mostrar_error("⚙️ Configuración", "Próximamente en Sprint 2")
     
-    def _mostrar_error(self, titulo, mensaje):
+    def mostrar_error(self, titulo, mensaje):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setAlignment(Qt.AlignCenter)
