@@ -1,5 +1,4 @@
 ## Módulo de Ventas - Sistema Minimarket
-## POS integrado con sistema de IDs P0001
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                              QPushButton, QTableWidget, QTableWidgetItem, 
@@ -86,9 +85,8 @@ class VentasFrame(QWidget):
                 border: 1px solid #ddd;
                 selection-background-color: #3498db;
                 selection-color: white;
-                alternate-background-color: #f8f9fa;
                 gridline-color: #e0e0e0;
-                font-size: 12px;
+                font-size: 14px;
             }
             QTableWidget::item {
                 padding: 8px;
@@ -96,18 +94,29 @@ class VentasFrame(QWidget):
             }
             QTableWidget::item:selected {
                 background-color: #3498db;
-                color: white;
+                color: black;
                 font-weight: bold;
             }
             QTableWidget::item:hover {
-                background-color: #e3f2fd;
+                background-color: #9CCDF0;
             }
             QHeaderView::section {
-                background-color: #f8f9fa;
-                border: 1px solid #ddd;
+                background-color: #e0e0e0;
+                border: 2px solid #ddd;
                 padding: 8px;
                 font-weight: bold;
                 font-size: 12px;
+            }
+            QScrollBar:vertical{
+                border: none;
+                background: #E3E3E3;
+                width: 12 px;
+                margin: 0px;
+            }
+            QScrollBar::handle:vertical{
+                background: #ccc;
+                min-height: 20px;
+                border-radius: 6px;
             }
         """)
 
@@ -127,7 +136,7 @@ class VentasFrame(QWidget):
         header.setStretchLastSection(True)
         
         # Configurar anchos específicos como en inventario
-        anchos = [80, 400, 80, 80, 80]  # ID, Nombre, Precio, Stock, Acción
+        anchos = [80, 600, 80, 80, 80]  # ID, Nombre, Precio, Stock, Acción
         for i, ancho in enumerate(anchos):
             self.tabla_productos.setColumnWidth(i, ancho)
         
@@ -144,25 +153,56 @@ class VentasFrame(QWidget):
         right_layout.addWidget(titulo_carrito)
         
         # Tabla del carrito - DIRECTAMENTE SIN PANEL
-        self.tabla_carrito = QTableWidget()
+        self.tabla_carrito = TablaNoEditable()
         self.tabla_carrito.setColumnCount(5)
         self.tabla_carrito.setHorizontalHeaderLabels(["Producto", "Cant.", "Precio", "Total", "Acción"])
         self.tabla_carrito.setStyleSheet("""
             QTableWidget {
+                background-color: white;
+                border: 1px solid #ddd;
+                selection-background-color: #3498db;
+                selection-color: white;
                 gridline-color: #e0e0e0;
-                background-color: #f9f9f9;
+                font-size: 14px;
             }
             QTableWidget::item {
-                padding: 6px;
+                padding: 8px;
+                border-bottom: 1px solid #eee;
+            }
+            QTableWidget::item:selected {
+                background-color: #3498db;
+                color: black;
+                font-weight: bold;
+            }
+            QTableWidget::item:hover {
+                background-color: #9CCDF0;
+            }
+            QHeaderView::section {
+                background-color: #e0e0e0;
+                border: 2px solid #ddd;
+                padding: 8px;
+                font-weight: bold;
+                font-size: 12px;
+            }
+            QScrollBar:vertical{
+                border: none;
+                background: #E3E3E3;
+                width: 12 px;
+                margin: 0px;
+            }
+            QScrollBar::handle:vertical{
+                background: #ccc;
+                min-height: 20px;
+                border-radius: 6px;
             }
         """)
         
         # Ajustar columnas del carrito
-        self.tabla_carrito.setColumnWidth(0, 120)  # Producto
-        self.tabla_carrito.setColumnWidth(1, 50)   # Cantidad
-        self.tabla_carrito.setColumnWidth(2, 70)   # Precio
-        self.tabla_carrito.setColumnWidth(3, 80)   # Total
-        self.tabla_carrito.setColumnWidth(4, 50)   # Acción
+        self.tabla_carrito.setColumnWidth(0, 243)  # Producto
+        self.tabla_carrito.setColumnWidth(1, 57)   # Cantidad
+        self.tabla_carrito.setColumnWidth(2, 69)   # Precio
+        self.tabla_carrito.setColumnWidth(3, 85)   # Total
+        self.tabla_carrito.setColumnWidth(4, 58)   # Acción
         
         right_layout.addWidget(self.tabla_carrito)
         
@@ -417,5 +457,6 @@ class VentasFrame(QWidget):
                                        f"✅ {mensaje}\nID: {venta_id}")
                 self.limpiarCarrito()
                 self.cargarProductos()  # Recargar para actualizar stock
+
             else:
                 QMessageBox.critical(self, "Error en Venta", f"❌ {mensaje}")
