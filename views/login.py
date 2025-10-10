@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+## Pantalla de logueo
+
 import sys
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QLabel, QLineEdit, QPushButton, 
@@ -12,7 +13,7 @@ class LoginVentana(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(f"{APP_NAME} - Iniciar Sesión")
-        self.setWindowIcon(QIcon("C:/Users/LENOVO LOQ/Documents/Sistema-Minimarket-wa/db/imagenes/LOGOO.ico"))
+        self.setWindowIcon(QIcon(APP_ICON))
         self.setFixedSize(1024, 576)
         
         # Widget central
@@ -46,14 +47,16 @@ class LoginVentana(QMainWindow):
         
         try:
             # Cargar imagen con PIL y convertir para PyQt
-            imagen_original = Image.open("C:/Users/LENOVO LOQ/Documents/Sistema-Minimarket-wa/db/imagenes/minimercado.jpg")
+            imagen_original = Image.open("C:/Users/LENOVO LOQ/Desktop/VI - 2025 - 20/Agile Development/PROYECTO/Sistema-Minimarket-wa/temp_minimarket.jpg")
             imagen_redimensionada = imagen_original.crop((0, 0, 620, 576))
             imagen_redimensionada.save("temp_minimarket.jpg")
             
             imagen_label = QLabel()
             pixmap = QPixmap("temp_minimarket.jpg")
-            imagen_label.setPixmap(pixmap)
-            imagen_label.setScaledContents(True)
+            # Verificar que el pixmap no sea nulo
+            if not pixmap.isNull():
+                imagen_label.setPixmap(pixmap)
+                imagen_label.setScaledContents(True)
             left_layout.addWidget(imagen_label)
         except:
             # Si no hay imagen, mostrar placeholder elegante
@@ -94,9 +97,12 @@ class LoginVentana(QMainWindow):
         try:
             # Cargar logo
             logo_label = QLabel()
-            pixmap = QPixmap("C:/Users/LENOVO LOQ/Documents/Sistema-Minimarket-wa/db/imagenes/LOGOT.png")
-            scaled_pixmap = pixmap.scaled(240, 55, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            logo_label.setPixmap(scaled_pixmap)
+            logo_path = os.path.join(IMG_DIR, "LOGOT.png")
+            pixmap = QPixmap(logo_path)
+            # Verificar que el pixmap no sea nulo antes de escalar
+            if not pixmap.isNull():
+                scaled_pixmap = pixmap.scaled(240, 55, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                logo_label.setPixmap(scaled_pixmap)
             logo_label.setAlignment(Qt.AlignCenter)
             form_layout.addWidget(logo_label)
         except:
@@ -146,6 +152,7 @@ class LoginVentana(QMainWindow):
                 font-size: 18px;
                 font-family: 'Roboto';
                 margin-bottom: 5px;
+                font-weight: bold;
             }
         """)
         form_layout.addWidget(usuario_label)
@@ -157,7 +164,7 @@ class LoginVentana(QMainWindow):
                 border: 1px solid #ced4da;
                 border-radius: 4px;
                 padding: 10px;
-                font-size: 18px;
+                font-size: 14px;
                 font-family: 'Roboto';
             }
             QLineEdit:focus {
@@ -175,6 +182,7 @@ class LoginVentana(QMainWindow):
                 font-size: 18px;
                 font-family: 'Roboto';
                 margin-bottom: 5px;
+                font-weight: bold;
             }
         """)
         form_layout.addWidget(password_label)
@@ -187,7 +195,7 @@ class LoginVentana(QMainWindow):
                 border: 1px solid #ced4da;
                 border-radius: 4px;
                 padding: 10px;
-                font-size: 18px;
+                font-size: 14px;
             }
             QLineEdit:focus {
                 border: 2px solid #4285F4;
@@ -203,7 +211,7 @@ class LoginVentana(QMainWindow):
                 background-color: #4285F4;
                 color: white;
                 border: none;
-                border-radius: 4px;
+                border-radius: 6px;
                 padding: 12px;
                 font-size: 18px;
                 font-weight: bold;
