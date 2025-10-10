@@ -26,23 +26,27 @@ Sistema de gestión completo para minimarket que incluye manejo de inventario, v
 
 1. **Clonar el repositorio**
 ```bash
+
 git clone https://github.com/TU_USUARIO/Sistema-Minimarket-wa.git
 cd Sistema-Minimarket-wa
 ```
 
 2. **Crear entorno virtual**
 ```bash
+
 python -m venv .venv
 .venv\Scripts\activate  # Windows
 ```
 
 3. **Instalar dependencias**
 ```bash
+
 pip install -r requirements.txt
 ```
 
 4. **Ejecutar aplicación**
 ```bash
+
 python main.py
 ```
 
@@ -95,9 +99,7 @@ Sistema-Minimarket-wa/
 
 ### Próximos Sprints
 - [ ] **Sprint 2**: FUNCIONALIDADES COMPLEMENTARIAS
-- [ ] **Sprint 3**: OPTIMIZACIÓN Y PERFORMANCE   
-- [ ] **Sprint 4**: EXPANSIÓN DE NEGOCIO
-
+- [ ] **Sprint 3**: OPTIMIZACIÓN Y PERFORMANCE
 
 ## 👨‍💻 Equipo de Desarrollo 
 
@@ -118,13 +120,7 @@ Sistema-Minimarket-wa/
 
 El sistema está disponible como **ejecutable independiente** que no requiere Python instalado:
 
-#### **Descarga y Uso:**
-- **Archivo:** `SistemaMinimarket_Fixed.exe` (102.4 MB)
-- **Ubicación:** `/dist/SistemaMinimarket_Fixed.exe`
-- **Plataforma:** Windows 10/11
-- **Instalación:** **NO REQUIERE** - Ejecutar directamente
-
-#### **Características del Ejecutable:**
+#### **Características:**
 - 🏪 **Sistema completo** con todas las funcionalidades
 - 🔐 **Login integrado** (Usuario: `admin`, Contraseña: `admin`)
 - 📦 **Gestión de inventarios** con sistema P0001
@@ -132,12 +128,6 @@ El sistema está disponible como **ejecutable independiente** que no requiere Py
 - 📊 **Reportes automáticos** (PDF y Excel)
 - 🗄️ **Base de datos SQLite** incluida
 - 🖼️ **Interfaz PyQt5** profesional
-
-#### **Para Distribución Comercial:**
-1. **Copiar** solo el archivo `SistemaMinimarket_Fixed.exe`
-2. **Compartir** con cualquier PC Windows
-3. **Ejecutar** con doble clic
-4. **¡Listo!** - Sistema completamente funcional
 
 #### **Dependencias Incluidas:**
 - Python 3.12
