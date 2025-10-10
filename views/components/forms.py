@@ -96,7 +96,8 @@ class ProductoForm(QDialog):
             campo_layout.addWidget(entry)
             main_layout.addLayout(campo_layout)
     
-    def _crear_line_edit(self, default_value): # → QLineEdit con estilos        entry = QLineEdit()
+    def _crear_line_edit(self, default_value, entry=None): # → QLineEdit con estilos
+        entry = QLineEdit()
         entry.setStyleSheet("""
             QLineEdit {
                 border: 1px solid #ddd;
