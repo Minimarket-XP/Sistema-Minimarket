@@ -1,5 +1,3 @@
-
-# -*- coding: utf-8 -*-
 ## Vista para gestión de empleados
 
 import os
@@ -27,14 +25,14 @@ class EmpleadosWidget(QWidget):
         layout.setSpacing(20)
         
         # Título
-        titulo = QLabel("👥 Gestión de Empleados")
+        titulo = QLabel("Gestión de Empleados")
         titulo.setAlignment(Qt.AlignCenter)
         titulo.setStyleSheet(f"""
             QLabel {{
                 color: {THEME_COLOR};
                 font-size: 24px;
                 font-weight: bold;
-                font-family: Arial;
+                font-family: Roboto;
                 margin-bottom: 20px;
             }}
         """)
@@ -117,16 +115,12 @@ class EmpleadosWidget(QWidget):
             for row, empleado in enumerate(empleados):
                 # ID
                 self.tabla_empleados.setItem(row, 0, QTableWidgetItem(str(empleado['id'])))
-                
                 # Nombre
                 self.tabla_empleados.setItem(row, 1, QTableWidgetItem(empleado['nombre']))
-                
                 # Apellido
                 self.tabla_empleados.setItem(row, 2, QTableWidgetItem(empleado['apellido']))
-                
                 # Usuario
                 self.tabla_empleados.setItem(row, 3, QTableWidgetItem(empleado['usuario']))
-                
                 # Rol
                 rol_item = QTableWidgetItem(empleado['rol'].title())
                 if empleado['rol'] == 'admin':
@@ -154,7 +148,7 @@ class EmpleadosWidget(QWidget):
                 btn_layout.setSpacing(5)
                 
                 # Botón Editar
-                btn_editar = QPushButton("✏️ Editar")
+                btn_editar = QPushButton("Editar")
                 btn_editar.setToolTip("Editar empleado")
                 btn_editar.setFixedHeight(28)
                 btn_editar.setMinimumWidth(80)
@@ -175,7 +169,7 @@ class EmpleadosWidget(QWidget):
                 btn_editar.clicked.connect(lambda checked, emp_id=empleado['id']: self.editar_empleado(emp_id))
                 
                 # Botón Cambiar Contraseña
-                btn_password = QPushButton("🔑 Contraseña")
+                btn_password = QPushButton("Contraseña")
                 btn_password.setToolTip("Cambiar contraseña")
                 btn_password.setFixedHeight(28)
                 btn_password.setMinimumWidth(100)
@@ -196,7 +190,7 @@ class EmpleadosWidget(QWidget):
                 btn_password.clicked.connect(lambda checked, emp_id=empleado['id']: self.cambiar_contraseña(emp_id))
                 
                 # Botón Desactivar
-                btn_desactivar = QPushButton("🚫 Desactivar")
+                btn_desactivar = QPushButton("Desactivar")
                 btn_desactivar.setToolTip("Desactivar empleado")
                 btn_desactivar.setFixedHeight(28)
                 btn_desactivar.setMinimumWidth(90)
