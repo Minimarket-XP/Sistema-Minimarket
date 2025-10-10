@@ -1,12 +1,10 @@
-# Modelo para manejar los datos de productos - Migrado a SQLite
-# Sistema de IDs P0001 con reutilización automática implementado
+## Modelo para manejar los datos de productos
 
-import os
 import shutil
 from views.settings import *
-from models.helpers import generar_id
 from models.base_model import BaseModel
 from db.database import db
+import pandas as pd
 
 class ProductoModel(BaseModel):
     def __init__(self):
@@ -77,29 +75,32 @@ class ProductoModel(BaseModel):
             print(f"Error obteniendo productos: {e}")
             import pandas as pd
             return pd.DataFrame(columns=self.columnas)
-    
-    def obtener_por_id(self, producto_id):
+
+    def obtenerPorId(self, producto_id):
         try:
-            producto = self.obtenerRegistro(producto_id, 'id')
-            if not producto:
-                return None
-            
-            # Convertir a formato pandas-like para compatibilidad
-            import pandas as pd
-            return pd.Series({
-                "ID": producto.get('id', ''),
-                "Nombre": producto.get('nombre', ''),
-                "Categoría": producto.get('categoria', ''),
-                "Tipo de Corte": producto.get('tipo_corte', ''),
-                "Precio": producto.get('precio', 0),
-                "Stock": producto.get('stock', 0),
-                "Stock Mínimo": producto.get('stock_minimo', 0),
-                "Imagen": producto.get('imagen', '')
-            })
+            # Usar el metodo optimizado del modelo base
+            producto_dict = self.obtenerRegistro(producto_id, 'id')
+
+            if producto_dict:
+                # Mapear manualmente el diccionario de minúsculas a mayúsculas
+                data_mapeada = {
+                    "ID": producto_dict.get('id', ''),
+                    "Nombre": producto_dict.get('nombre', ''),
+                    "Categoría": producto_dict.get('categoria', ''),
+                    "Tipo de Corte": producto_dict.get('tipo_corte', ''),
+                    "Precio": producto_dict.get('precio', 0),
+                    "Stock": producto_dict.get('stock', 0),
+                    "Stock Mínimo": producto_dict.get('stock_minimo', 0),
+                    "Imagen": producto_dict.get('imagen', '')
+                }
+                return pd.DataFrame([data_mapeada]) # → DataFrame creado con Mapeo
+            else: # → Retorna un DataFrame vacío si no encuentra nada
+                return pd.DataFrame(columns=self.columnas)
+
         except Exception as e:
-            print(f"Error obteniendo producto {producto_id}: {e}")
-            return None
-    
+            print(f"Error al obtener producto por ID: {e}")
+            return pd.DataFrame(columns=self.columnas)
+
     def crearProducto(self, datos):
         try:
             # Generar ID usando el nuevo sistema P0001, P0002, etc.
@@ -122,7 +123,7 @@ class ProductoModel(BaseModel):
                 'imagen': imagen_destino
             }
             
-            # Crear producto usando el método base
+            # Crear producto usando el metodo base
             self.crearRegistro(producto_data)
             return nuevo_id
             
@@ -140,7 +141,7 @@ class ProductoModel(BaseModel):
             imagen_destino = None
             if datos.get("imagen_origen"):
                 imagen_destino = self.plagiarImagen(datos["imagen_origen"], producto_id)
-            
+
             # Mapear datos al formato SQLite
             update_data = {}
             if 'Nombre' in datos:
@@ -265,7 +266,7 @@ class ProductoModel(BaseModel):
                         })
             
             return productos_problematicos
-            
+
         except Exception as e:
             print(f"Error obteniendo productos con stock bajo: {e}")
             return []
