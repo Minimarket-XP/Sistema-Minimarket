@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
 ## Modelo para manejar los datos de empleados - SQLite
 
 from models.base_model import BaseModel
-from db.database import db
 
 class EmpleadoModel(BaseModel):
     def __init__(self):
