@@ -5,12 +5,20 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QLineEdit, QMessageBox, QFrame, 
                              QAbstractItemView, QHeaderView, QInputDialog)
 from PyQt5.QtCore import Qt
+<<<<<<< HEAD:views/ventas.py
 from views.settings import *
 from models.producto import ProductoModel
 from models.venta import VentaModel
 from models.helpers import formatear_precio
 from models.descuentos import AplicarDescuento
 from views.inventario import TablaNoEditable
+=======
+from core.config import *
+from modules.productos.producto_model import ProductoModel
+from modules.ventas.venta_model import VentaModel
+from shared.helpers import formatear_precio
+from modules.productos.inventario_view import TablaNoEditable
+>>>>>>> 51bcbc5 (feat: Preparación de la estructura para el Sprint 2 XP - archivos base):modules/ventas/venta_view.py
 import pandas as pd
 
 class VentasFrame(QWidget):

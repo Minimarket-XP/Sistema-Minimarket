@@ -1,6 +1,6 @@
 ## Modelo para manejar los datos de empleados - SQLite
 
-from models.base_model import BaseModel
+from core.base_model import BaseModel
 
 class EmpleadoModel(BaseModel):
     def __init__(self):

@@ -9,7 +9,7 @@ def generar_id(prefijo): # → Genera un ID único con prefijo
 
 def cargar_categorias(): # → Cargar desde la BD o devuelve por defecto
     try:
-        from db.database import db
+        from core.database import db
         query = "SELECT nombre FROM categorias ORDER BY nombre"
         result = db.execute_query(query)
         categorias = [row[0] for row in result]

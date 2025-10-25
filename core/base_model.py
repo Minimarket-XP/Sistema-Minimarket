@@ -2,7 +2,7 @@
 
 import sqlite3
 from datetime import datetime
-from db.database import db
+from core.database import db
 
 class BaseModel:  # Clase base para modelos CRUD
     def __init__(self, table_name, columns):

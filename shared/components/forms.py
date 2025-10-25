@@ -1,12 +1,13 @@
 ## Formularios y componentes reutilizables
 
+import os
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                              QLineEdit, QPushButton, QComboBox, QFileDialog, 
                              QMessageBox, QInputDialog, QFrame)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap, QFont
-from views.settings import *
-from models.helpers import cargar_categorias, cargar_tipos_corte, validar_numero
+from core.config import *
+from shared.helpers import cargar_categorias, cargar_tipos_corte, validar_numero
 
 class ProductoForm(QDialog):    
     def __init__(self, parent, title="Producto", producto_data=None):
@@ -250,59 +251,6 @@ class ProductoForm(QDialog):
         """)
         boton.clicked.connect(funcion)
         return boton
-        imagen_layout.addWidget(btn_seleccionar)
-        imagen_layout.addWidget(self.img_info_label)
-        
-        main_layout.addLayout(imagen_layout)
-        
-        # Espaciador
-        main_layout.addStretch()
-        
-        # Botones
-        botones_layout = QHBoxLayout()
-        botones_layout.setSpacing(10)
-        
-        textoguardar = "💾 Guardar Cambios" if (self.producto_data is not None and not self.producto_data.empty) else "💾 Guardar"
-        btnguardar = QPushButton(textoguardar)
-        btnguardar.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {INFO_COLOR};
-                color: white;
-                border: none;
-                border-radius: 4px;
-                padding: 12px 20px;
-                font-size: 12px;
-                font-weight: bold;
-            }}
-            QPushButton:hover {{
-                background-color: #2980b9;
-            }}
-        """)
-        btnguardar.clicked.connect(self.guardar)
-        
-        btn_cancelar = QPushButton("Cancelar")
-        btn_cancelar.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {ERROR_COLOR};
-                color: white;
-                border: none;
-                border-radius: 4px;
-                padding: 12px 20px;
-                font-size: 12px;
-                font-weight: bold;
-            }}
-            QPushButton:hover {{
-                background-color: #c0392b;
-            }}
-        """)
-        btn_cancelar.clicked.connect(self.reject)
-        
-        botones_layout.addStretch()
-        botones_layout.addWidget(btnguardar)
-        botones_layout.addWidget(btn_cancelar)
-        botones_layout.addStretch()
-        
-        main_layout.addLayout(botones_layout)
     
     def llenarCampos(self):
         if self.producto_data is None or self.producto_data.empty:
@@ -342,7 +290,7 @@ class ProductoForm(QDialog):
             nueva_categoria = nueva_categoria.strip()
             try:
                 # Agregar a la base de datos
-                from db.database import db
+                from core.database import db
                 db.execute_query("INSERT OR IGNORE INTO categorias (nombre, descripcion) VALUES (?, ?)", 
                                (nueva_categoria, f"Categoría {nueva_categoria}"))
                 

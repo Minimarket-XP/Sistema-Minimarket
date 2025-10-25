@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QMessageBox, QFrame)
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPixmap, QIcon, QFont
-from views.settings import *
+from core.config import *
 from PIL import Image
 
 class LoginVentana(QMainWindow):
@@ -271,7 +271,7 @@ class LoginVentana(QMainWindow):
     
     def validarCredenciales(self, usuario, password):
         try:
-            from models.empleado import EmpleadoModel
+            from modules.empleados.empleado_model import EmpleadoModel
             empleado_model = EmpleadoModel()
             return empleado_model.validar_credenciales(usuario, password)
         except Exception as e:
@@ -281,7 +281,7 @@ class LoginVentana(QMainWindow):
     
     def abrirDashboard(self):
         self.hide()
-        from views.dashboard import Dashboard
+        from shared.dashboard import Dashboard
         
         self.dashboard = Dashboard(self.usuario_logueado)
         self.dashboard.show()
