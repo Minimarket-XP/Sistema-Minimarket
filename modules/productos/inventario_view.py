@@ -6,10 +6,10 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QHeaderView, QMessageBox, QAbstractItemView)
 from PyQt5.QtCore import Qt
 import pandas as pd
-from models.producto import ProductoModel
-from views.components.forms import ProductoForm, ImagenViewer
-from models.helpers import formatear_precio
-from views.settings import *
+from modules.productos.producto_model import ProductoModel
+from shared.components.forms import ProductoForm, ImagenViewer
+from shared.helpers import formatear_precio
+from core.config import *
 
 class InventarioFrame(QWidget):      
     def __init__(self, parent):

@@ -1,0 +1,105 @@
+Tener en cuenta que: NO siempre se guarda el cliente en la BD (COMPROBANTE), solo en casos como:
+        * CLIENTES FRECUENTES
+        * FACTURAS 
+
+CREATE TABLE IF NOT EXISTS categorias (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT NOT NULL UNIQUE,
+    descripcion TEXT,
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+
+CREATE TABLE IF NOT EXISTS productos (
+    id TEXT PRIMARY KEY,
+    nombre TEXT NOT NULL,
+    categoria TEXT NOT NULL,
+    tipo_corte TEXT,
+    precio REAL NOT NULL DEFAULT 0,
+    stock INTEGER NOT NULL DEFAULT 0,
+    stock_minimo INTEGER NOT NULL DEFAULT 0,
+    imagen TEXT,
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+
+CREATE TABLE IF NOT EXISTS empleados (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT NOT NULL,
+    apellido TEXT NOT NULL,
+    usuario TEXT NOT NULL UNIQUE,
+    contraseña TEXT NOT NULL,
+    rol TEXT NOT NULL DEFAULT 'empleado',
+    activo INTEGER NOT NULL DEFAULT 1,
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+
+CREATE TABLE IF NOT EXISTS clientes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,               → Identificador único autoincremental 
+    tipo_documento TEXT NOT NULL,                       → DNI - RUC - CE - PASAPORTE
+    num_documento TEXT NOT NULL UNIQUE,                 → 8 dígitos - 11 dígitos | ÚNICO
+    nombre TEXT NOT NULL,                               → Nombre completo o Razón Social 
+    direccion TEXT,                                     → Dirección Fiscal - Obligatorio para Facturas
+    telefono TEXT,                                      → Número de contacto del cliente - opcional
+    email TEXT,                                         → Correo electrónico del cliente - opcional
+    activo INTEGER NOT NULL DEFAULT 1,                  → 1 = activo - 0 = eliminado/inactivo
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP  → Fecha de registro del cliente
+)
+
+CREATE TABLE IF NOT EXISTS ventas (
+    id TEXT PRIMARY KEY,
+    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    empleado_id INTEGER,
+    total REAL NOT NULL DEFAULT 0,
+    metodo_pago TEXT,
+    estado TEXT DEFAULT 'completada',
+    descuento REAL DEFAULT 0,
+    FOREIGN KEY (empleado_id) REFERENCES empleados (id)
+)
+
+CREATE TABLE IF NOT EXISTS comprobantes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,               → Identificador único autoincremental
+    venta_id TEXT NOT NULL,                             → relación con la VENTA - FK 
+    tipo TEXT NOT NULL,                                 → Boleta - Factura0
+    serie TEXT,                                         → Serie del comprobante - B0001, F0001, ....
+    numero INTEGER,                                     → Numero correlativo del comprobante - 001, 002, ...
+    cliente_id INTEGER,                                 → Relación con el CLIENTE - FK
+    ruc_emisor TEXT,                                    → RUC de la empresa (mi minimarket)
+    xml_path TEXT,                                      → Ruta del archivo XML firmado por la SUNAT
+    pdf_path TEXT,                                      → Ruta del PDF del comprobante para impresión
+    estado_sunat TEXT,                                  → SUNAT: ACEPTADO - RECHAZADO - PENDIENTE
+    fecha_emision TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  → Fecha exacta cuando se emitió el comprobante
+    FOREIGN KEY (venta_id) REFERENCES ventas (id),
+    FOREIGN KEY (cliente_id) REFERENCES clientes (id)
+)
+
+CREATE TABLE IF NOT EXISTS detalle_ventas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    venta_id TEXT NOT NULL,
+    producto_id TEXT NOT NULL,
+    cantidad INTEGER NOT NULL,
+    precio_unitario REAL NOT NULL,
+    subtotal REAL NOT NULL,
+    descuento REAL DEFAULT 0,
+    FOREIGN KEY (venta_id) REFERENCES ventas (id),
+    FOREIGN KEY (producto_id) REFERENCES productos (id)
+)
+        
+CREATE TABLE IF NOT EXISTS devoluciones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,           → Identificador único autoincremental
+    venta_id TEXT NOT NULL,                         → Relación con la VENTA - FK
+    producto_id TEXT NOT NULL,                      → Relación con el PRODUCTO devuelto - FK
+    cantidad INTEGER NOT NULL,                      → Cantidad de unidades devueltas 
+    motivo TEXT,                                    → Razón de la devolución - defectuoso, error, etc
+    empleado_id INTEGER,                            → EMPLEADO que proceso la devolución - FK
+    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,      → Momento exacto de cuando ocurrió la devolución
+    FOREIGN KEY (venta_id) REFERENCES ventas (id),
+    FOREIGN KEY (producto_id) REFERENCES productos (id),
+    FOREIGN KEY (empleado_id) REFERENCES empleados (id)
+)
+        
+CREATE TABLE IF NOT EXISTS configuracion (
+    clave TEXT PRIMARY KEY,
+    valor TEXT NOT NULL,
+    descripcion TEXT,
+    fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)

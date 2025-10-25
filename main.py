@@ -9,8 +9,11 @@ from PyQt5.QtCore import Qt, QTextCodec
 # Configurar la codificación por defecto del sistema
 if sys.version_info[0] >= 3:
     import io
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+    # Solo configurar si buffer existe (falla en modo --noconsole de PyInstaller)
+    if hasattr(sys.stdout, 'buffer') and sys.stdout.buffer:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    if hasattr(sys.stderr, 'buffer') and sys.stderr.buffer:
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 # Configurar locale para UTF-8
 try:
@@ -42,7 +45,7 @@ def main():
         app.setApplicationVersion("2.0.0 - PyQt5 Migration")
 
         # Importar y crear la ventana principal de login
-        from views.login import LoginVentana
+        from shared.login import LoginVentana
         login_window = LoginVentana()
         login_window.show()
         

@@ -1,9 +1,9 @@
 ## Modelo para manejar los datos de productos
 
 import shutil
-from views.settings import *
-from models.base_model import BaseModel
-from db.database import db
+from core.config import *
+from core.base_model import BaseModel
+from core.database import db
 import pandas as pd
 
 class ProductoModel(BaseModel):

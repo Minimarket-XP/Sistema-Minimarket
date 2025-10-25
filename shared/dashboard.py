@@ -3,7 +3,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QLabel, QPushButton, QFrame, QStackedWidget)
 from PyQt5.QtCore import Qt
-from views.settings import *
+from core.config import *
 
 class Dashboard(QMainWindow):
     def __init__(self, usuario):
@@ -18,7 +18,7 @@ class Dashboard(QMainWindow):
     
     def obtener_rol_usuario(self): # → Obtener el rol de usuario activo
         try:
-            from models.empleado import EmpleadoModel
+            from modules.empleados.empleado_model import EmpleadoModel
             empleado_model = EmpleadoModel()
             empleado = empleado_model.obtenerUsuario(self.usuario)
             return empleado['rol'] if empleado else 'empleado'
@@ -109,17 +109,18 @@ class Dashboard(QMainWindow):
         
         # Botones principales
         botones = [
-            ("📦 Inventario", self.mostrar_inventario),
-            ("💰 Ventas", self.mostrar_ventas),
-            ("📊 Reportes", self.mostrar_reportes),
-            ("🛒 Compras", self.mostrar_compras),
-            ("🚛 Despachos", self.mostrar_despachos),
+            ("Ventas", self.mostrar_ventas),
+            ("Inventario", self.mostrar_inventario),
+            ("Compras", self.mostrar_compras),
+            ("Alertas", self.mostrar_alertas),
+            ("Devoluciones", self.mostrar_devoluciones),
+            ("Reportes", self.mostrar_reportes),
             ("⚙️ Configuración", self.mostrar_configuracion)
         ]
         
         # Agregar gestión de empleados solo para administradores
         if self.usuario_rol in ['admin']:
-            botones.insert(3, ("👥 Empleados", self.mostrar_empleados))
+            botones.insert(3, ("Empleados", self.mostrar_empleados))
         
         for texto, comando in botones:
             btn = QPushButton(texto)
@@ -191,44 +192,48 @@ class Dashboard(QMainWindow):
     def mostrar_inventario(self):
         self.limpiar_contenido()
         try:
-            from views.inventario import InventarioFrame
+            from modules.productos.inventario_view import InventarioFrame
             inventario = InventarioFrame(self)
             self.main_content.addWidget(inventario)
             self.main_content.setCurrentWidget(inventario)
         except Exception as e:
-            self.mostrar_error("📦 Inventario", str(e))
+            self.mostrar_error("Inventario", str(e))
     
     def mostrar_ventas(self):
         self.limpiar_contenido()
         try:
-            from views.ventas import VentasFrame
+            from modules.ventas.venta_view import VentasFrame
             ventas = VentasFrame(self)
             self.main_content.addWidget(ventas)
             self.main_content.setCurrentWidget(ventas)
         except Exception as e:
-            self.mostrar_error("💰 Ventas", f"Error al cargar módulo: {str(e)}")
+            self.mostrar_error("Ventas", f"Error al cargar módulo: {str(e)}")
     
     def mostrar_reportes(self):
         self.limpiar_contenido()
-        self.mostrar_error("📊 Reportes", "Próximamente en Sprint 2")
+        self.mostrar_error("Reportes", "Próximamente en Sprint 2")
     
     def mostrar_empleados(self):
         self.limpiar_contenido()
         try:
-            from views.empleados import EmpleadosWidget
+            from modules.empleados.empleado_view import EmpleadosWidget
             empleados_widget = EmpleadosWidget(self.usuario_rol)
             self.main_content.addWidget(empleados_widget)
             self.main_content.setCurrentWidget(empleados_widget)
         except Exception as e:
-            self.mostrar_error("👥 Empleados", f"Error al cargar módulo: {str(e)}")
+            self.mostrar_error("Empleados", f"Error al cargar módulo: {str(e)}")
     
     def mostrar_compras(self):
         self.limpiar_contenido()
-        self.mostrar_error("🛒 Compras", "Próximamente en Sprint 2")
-    
-    def mostrar_despachos(self):
+        self.mostrar_error("Compras", "Próximamente en Sprint 2")
+
+    def mostrar_alertas(self):
         self.limpiar_contenido()
-        self.mostrar_error("🚛 Despachos", "Próximamente en Sprint 2")
+        self.mostrar_error("Alertas", "Próximamente en Sprint 2")
+
+    def mostrar_devoluciones(self):
+        self.limpiar_contenido()
+        self.mostrar_error("Devoluciones", "Próximamente en Sprint 2")
     
     def mostrar_configuracion(self):
         self.limpiar_contenido()

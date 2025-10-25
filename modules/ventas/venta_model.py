@@ -1,8 +1,8 @@
 ## Modelo de Ventas - Sistema Minimarket
 
 import pandas as pd
-from db.database import db
-from models.producto import ProductoModel
+from core.database import db
+from modules.productos.producto_model import ProductoModel
 from datetime import datetime
 
 class VentaModel:

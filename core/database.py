@@ -2,7 +2,7 @@
 
 import sqlite3
 import os
-from views.settings import DB_DIR
+from core.config import DB_DIR
 
 class Database:
     def __init__(self):
@@ -29,20 +29,6 @@ class Database:
                 descripcion TEXT,
                 fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        ''')
-        
-        # Tabla de secuencias para generar IDs personalizados
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS secuencias (
-                tabla TEXT PRIMARY KEY,
-                ultimo_numero INTEGER DEFAULT 0
-            )
-        ''')
-        
-        # Insertar secuencia para productos si no existe
-        cursor.execute('''
-            INSERT OR IGNORE INTO secuencias (tabla, ultimo_numero) 
-            VALUES ('productos', 0)
         ''')
         
         # Tabla de productos
@@ -75,6 +61,21 @@ class Database:
             )
         ''')
         
+        # Tabla de clientes (para facturación electrónica)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS clientes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tipo_documento TEXT NOT NULL,
+                num_documento TEXT NOT NULL UNIQUE,
+                nombre TEXT NOT NULL,
+                direccion TEXT,
+                telefono TEXT,
+                email TEXT,
+                activo INTEGER NOT NULL DEFAULT 1,
+                fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
         # Tabla de ventas
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS ventas (
@@ -84,7 +85,27 @@ class Database:
                 total REAL NOT NULL DEFAULT 0,
                 metodo_pago TEXT,
                 estado TEXT DEFAULT 'completada',
+                descuento REAL DEFAULT 0,
                 FOREIGN KEY (empleado_id) REFERENCES empleados (id)
+            )
+        ''')
+        
+        # Tabla de comprobantes electrónicos
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS comprobantes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                venta_id TEXT NOT NULL,
+                tipo TEXT NOT NULL,
+                serie TEXT,
+                numero INTEGER,
+                cliente_id INTEGER,
+                ruc_emisor TEXT,
+                xml_path TEXT,
+                pdf_path TEXT,
+                estado_sunat TEXT,
+                fecha_emision TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (venta_id) REFERENCES ventas (id),
+                FOREIGN KEY (cliente_id) REFERENCES clientes (id)
             )
         ''')
         
@@ -97,56 +118,25 @@ class Database:
                 cantidad INTEGER NOT NULL,
                 precio_unitario REAL NOT NULL,
                 subtotal REAL NOT NULL,
+                descuento REAL DEFAULT 0,
                 FOREIGN KEY (venta_id) REFERENCES ventas (id),
                 FOREIGN KEY (producto_id) REFERENCES productos (id)
             )
         ''')
         
-        # Tabla de compras
+        # Tabla de devoluciones
         cursor.execute('''
-            CREATE TABLE IF NOT EXISTS compras (
-                id TEXT PRIMARY KEY,
-                fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                proveedor TEXT,
-                total REAL NOT NULL DEFAULT 0,
-                estado TEXT DEFAULT 'completada'
-            )
-        ''')
-        
-        # Tabla de detalle de compras
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS detalle_compras (
+            CREATE TABLE IF NOT EXISTS devoluciones (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                compra_id TEXT NOT NULL,
+                venta_id TEXT NOT NULL,
                 producto_id TEXT NOT NULL,
                 cantidad INTEGER NOT NULL,
-                precio_unitario REAL NOT NULL,
-                subtotal REAL NOT NULL,
-                FOREIGN KEY (compra_id) REFERENCES compras (id),
-                FOREIGN KEY (producto_id) REFERENCES productos (id)
-            )
-        ''')
-        
-        # Tabla de despachos
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS despachos (
-                id TEXT PRIMARY KEY,
+                motivo TEXT,
+                empleado_id INTEGER,
                 fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                destino TEXT,
-                estado TEXT DEFAULT 'pendiente',
-                observaciones TEXT
-            )
-        ''')
-        
-        # Tabla de detalle de despachos
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS detalle_despachos (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                despacho_id TEXT NOT NULL,
-                producto_id TEXT NOT NULL,
-                cantidad INTEGER NOT NULL,
-                FOREIGN KEY (despacho_id) REFERENCES despachos (id),
-                FOREIGN KEY (producto_id) REFERENCES productos (id)
+                FOREIGN KEY (venta_id) REFERENCES ventas (id),
+                FOREIGN KEY (producto_id) REFERENCES productos (id),
+                FOREIGN KEY (empleado_id) REFERENCES empleados (id)
             )
         ''')
         
@@ -172,6 +162,12 @@ class Database:
         cursor.execute('''
             INSERT OR IGNORE INTO empleados (nombre, apellido, usuario, contraseña, rol)
             VALUES ('Administrador', 'Sistema', 'admin', 'admin', 'administrador')
+        ''')
+        
+        # Insertar cliente genérico para boletas sin DNI
+        cursor.execute('''
+            INSERT OR IGNORE INTO clientes (id, tipo_documento, num_documento, nombre)
+            VALUES (1, 'GENERICO', '00000000', 'Cliente Genérico')
         ''')
         
         # Insertar categorías básicas

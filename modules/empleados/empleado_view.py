@@ -8,8 +8,8 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QDialogButtonBox, QGroupBox, QCheckBox)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
-from models.empleado import EmpleadoModel
-from views.settings import *
+from modules.empleados.empleado_model import EmpleadoModel
+from core.config import *
 
 class EmpleadosWidget(QWidget):
     def __init__(self, usuario_rol='empleado'):
