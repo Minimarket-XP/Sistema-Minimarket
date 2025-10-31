@@ -1,43 +1,46 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 import sys
-from PyInstaller.utils.hooks import collect_dynamic_libs
+import os
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 block_cipher = None
 
-# Agregar librerías dinámicas de sistema
+# Recopilar todos los modulos y archivos de PyQt5
+datas_pyqt5 = collect_data_files('PyQt5', include_py_files=True)
+hiddenimports_pyqt5 = collect_submodules('PyQt5')
+
 binaries = []
-binaries += collect_dynamic_libs('PyQt5')
 
 a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=binaries,
     datas=[
-        ('db/imagenes/*.png', 'db/imagenes'),
-        ('db/imagenes/*.jpg', 'db/imagenes'),
-        ('db/imagenes/*.webp', 'db/imagenes'),
-        ('db/imagenes/*.ico', 'db/imagenes'),
+        ('db/imagenes', 'db/imagenes'),
         ('db/*.db', 'db'),
-        ('models', 'models'),
-        ('views', 'views'),
-    ],
+        ('modules', 'modules'),
+        ('shared', 'shared'),
+        ('core', 'core'),
+    ] + datas_pyqt5,
     hiddenimports=[
+        'PyQt5',
         'PyQt5.QtCore',
         'PyQt5.QtGui', 
         'PyQt5.QtWidgets',
         'PyQt5.QtPrintSupport',
+        'PyQt5.sip',
         'sqlite3',
         'pandas',
         'openpyxl',
+        'PIL',
         'PIL.Image',
+        'reportlab',
+        'reportlab.pdfgen',
         'reportlab.pdfgen.canvas',
         'reportlab.lib.pagesizes',
         'reportlab.platypus',
-        'datetime',
-        'os',
-        'sys'
-    ],
+    ] + hiddenimports_pyqt5,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
