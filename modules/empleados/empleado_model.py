@@ -73,6 +73,14 @@ class EmpleadoModel(BaseModel):
             print(f"Error obteniendo empleados activos: {e}")
             return []
     
+    def obtenerEmpleadosInactivos(self):
+        try:
+            return self.get_all("activo = 0")
+        except Exception as e:
+            print(f"Error obteniendo empleados inactivos: {e}")
+            return []
+
+
     def get_by_id(self, empleado_id):
         """Obtener empleado por ID"""
         try:
