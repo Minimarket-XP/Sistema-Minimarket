@@ -10,6 +10,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 from modules.empleados.empleado_model import EmpleadoModel
 from core.config import *
+from modules.productos.inventario_view import TablaNoEditable
 
 class EmpleadosWidget(QWidget):
     def __init__(self, usuario_rol='empleado'):
@@ -60,56 +61,72 @@ class EmpleadosWidget(QWidget):
             layout.addWidget(btn_crear)
         
         # Tabla de empleados
-        self.tabla_empleados = QTableWidget()
-        self.tabla_empleados.setColumnCount(7)
-        self.tabla_empleados.setHorizontalHeaderLabels([
-            "ID", "Nombre", "Apellido", "Usuario", "Rol", "Estado", "Acciones"
-        ])
-        
-        # Configurar tabla
-        header = self.tabla_empleados.horizontalHeader()
-        header.setStretchLastSection(True)
-        header.setSectionResizeMode(QHeaderView.Interactive)
-        
-        # Ajustar anchos de columnas
-        self.tabla_empleados.setColumnWidth(0, 50)   # ID
-        self.tabla_empleados.setColumnWidth(1, 120)  # Nombre
-        self.tabla_empleados.setColumnWidth(2, 120)  # Apellido
-        self.tabla_empleados.setColumnWidth(3, 100)  # Usuario
-        self.tabla_empleados.setColumnWidth(4, 80)   # Rol
-        self.tabla_empleados.setColumnWidth(5, 80)   # Estado
-        self.tabla_empleados.setColumnWidth(6, 280)  # Acciones
-        
-        self.tabla_empleados.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.tabla_empleados.setAlternatingRowColors(True)
+        self.tabla_empleados = TablaNoEditable()
         self.tabla_empleados.setStyleSheet("""
             QTableWidget {
-                gridline-color: #e0e0e0;
                 background-color: white;
-                alternate-background-color: #f8f9fa;
-                selection-background-color: #e3f2fd;
                 border: 1px solid #ddd;
-                border-radius: 8px;
+                selection-background-color: #3498db;
+                selection-color: white;
+                gridline-color: #e0e0e0;
+                font-size: 14px;
             }
             QTableWidget::item {
                 padding: 8px;
-                border: none;
+                border-bottom: 1px solid #eee;
+            }
+            QTableWidget::item:selected {
+                background-color: #3498db;
+                color: black;
+                font-weight: bold;
+            }
+            QTableWidget::item:hover {
+                background-color: #9CCDF0;
             }
             QHeaderView::section {
-                background-color: #f5f5f5;
-                padding: 10px;
-                border: none;
-                border-bottom: 2px solid #ddd;
+                background-color: #e0e0e0;
+                border: 2px solid #ddd;
+                padding: 8px;
                 font-weight: bold;
-                color: #333;
+                font-size: 12px;
+            }
+            QScrollBar:vertical{
+                border: none;
+                background: #E3E3E3;
+                width: 12 px;
+                margin: 0px;
+            }
+            QScrollBar::handle:vertical{
+                background: #ccc;
+                min-height: 20px;
+                border-radius: 6px;
             }
         """)
+        # Configurar columnas
+        columnas_empleados = ["ID", "Nombre", "Apellido", "Usuario", "Rol", "Activo", "Acciones"]
+        self.tabla_empleados.setColumnCount(len(columnas_empleados))
+        self.tabla_empleados.setHorizontalHeaderLabels(columnas_empleados)
+        
+        # Configurar Selección - igual que inventario_view.py
+        self.tabla_empleados.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.tabla_empleados.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.tabla_empleados.setAlternatingRowColors(True)
+        self.tabla_empleados.setFocusPolicy(Qt.NoFocus)
+
+        # Ajustar anchos de columnas
+        header = self.tabla_empleados.horizontalHeader()
+        header.setStretchLastSection(True)
+        anchos = [50, 150, 250, 120, 120, 120, 280]  # Anchos de columnas
+        for i, ancho in enumerate(anchos):
+            self.tabla_empleados.setColumnWidth(i, ancho)
         
         layout.addWidget(self.tabla_empleados)
     
     def cargar_empleados(self):
         try:
             empleados = self.empleado_model.obtenerEmpleadosActivos()
+            desempleados = self.empleado_model.obtenerEmpleadosInactivos()
+            empleados.extend(desempleados)  # Mostrar primero activos, luego inactivos
             self.tabla_empleados.setRowCount(len(empleados))
             
             for row, empleado in enumerate(empleados):
@@ -150,7 +167,7 @@ class EmpleadosWidget(QWidget):
                 # Botón Editar
                 btn_editar = QPushButton("Editar")
                 btn_editar.setToolTip("Editar empleado")
-                btn_editar.setFixedHeight(28)
+                btn_editar.setFixedHeight(20)
                 btn_editar.setMinimumWidth(80)
                 btn_editar.setStyleSheet("""
                     QPushButton {
@@ -167,11 +184,11 @@ class EmpleadosWidget(QWidget):
                     }
                 """)
                 btn_editar.clicked.connect(lambda checked, emp_id=empleado['id']: self.editar_empleado(emp_id))
-                
+
                 # Botón Cambiar Contraseña
                 btn_password = QPushButton("Contraseña")
                 btn_password.setToolTip("Cambiar contraseña")
-                btn_password.setFixedHeight(28)
+                btn_password.setFixedHeight(20)
                 btn_password.setMinimumWidth(100)
                 btn_password.setStyleSheet("""
                     QPushButton {
@@ -189,30 +206,74 @@ class EmpleadosWidget(QWidget):
                 """)
                 btn_password.clicked.connect(lambda checked, emp_id=empleado['id']: self.cambiar_contraseña(emp_id))
                 
-                # Botón Desactivar
-                btn_desactivar = QPushButton("Desactivar")
-                btn_desactivar.setToolTip("Desactivar empleado")
-                btn_desactivar.setFixedHeight(28)
-                btn_desactivar.setMinimumWidth(90)
-                btn_desactivar.setStyleSheet("""
-                    QPushButton {
-                        background-color: #e74c3c;
-                        color: white;
-                        border: none;
-                        padding: 4px 8px;
-                        border-radius: 4px;
-                        font-weight: bold;
-                        font-size: 12px;
-                    }
-                    QPushButton:hover {
-                        background-color: #c0392b;
-                    }
-                """)
-                btn_desactivar.clicked.connect(lambda checked, emp_id=empleado['id']: self.desactivar_empleado(emp_id))
+                # Boton Activar/Desactivar segun estado
+                if empleado['activo']:
+                    btn_estado = QPushButton("Desactivar")
+                    btn_estado.setToolTip("Desactivar empleado")
+                    btn_estado.setStyleSheet("""
+                        QPushButton {
+                            background-color: #e74c3c;
+                            color: white;
+                            border: none;
+                            padding: 4px 8px;
+                            border-radius: 4px;
+                            font-weight: bold;
+                            font-size: 12px;
+                        }
+                        QPushButton:hover {
+                            background-color: #c0392b;
+                        }
+                    """)
+                    btn_estado.clicked.connect(lambda checked, emp_id=empleado['id']: self.desactivar_empleado(emp_id))
+                else:
+                    btn_estado = QPushButton("Activar")
+                    btn_estado.setToolTip("Activar empleado")
+                    btn_estado.setStyleSheet("""
+                        QPushButton {
+                            background-color: #27ae60;
+                            color: white;
+                            border: none;
+                            padding: 4px 8px;
+                            border-radius: 4px;
+                            font-weight: bold;
+                            font-size: 12px;
+                        }
+                        QPushButton:hover {
+                            background-color: #219150;
+                        }
+                    """)
+                    btn_estado.clicked.connect(lambda checked, emp_id=empleado['id']: self.activar_empleado(emp_id))
                 
+                btn_estado.setFixedHeight(20)
+                btn_estado.setMinimumWidth(90)
+
                 btn_layout.addWidget(btn_editar)
                 btn_layout.addWidget(btn_password)
-                btn_layout.addWidget(btn_desactivar)
+                btn_layout.addWidget(btn_estado)
+                
+                # Boton Eliminar solo si NO es admin
+                if empleado['id'] != 3:  # ID 3 es el admin principal
+                    btn_eliminar = QPushButton("Eliminar")
+                    btn_eliminar.setToolTip("Eliminar empleado")
+                    btn_eliminar.setFixedHeight(20)
+                    btn_eliminar.setMinimumWidth(80)
+                    btn_eliminar.setStyleSheet("""
+                        QPushButton {
+                            background-color: #c0392b;
+                            color: white;
+                            border: none;
+                            padding: 4px 8px;
+                            border-radius: 4px;
+                            font-weight: bold;
+                            font-size: 12px;
+                        }
+                        QPushButton:hover {
+                            background-color: #922b21;
+                        }
+                    """)
+                    btn_eliminar.clicked.connect(lambda checked, emp_id=empleado['id']: self.eliminar_empleado(emp_id))
+                    btn_layout.addWidget(btn_eliminar)
+                
                 btn_layout.addStretch()
                 
                 self.tabla_empleados.setCellWidget(row, 6, btn_widget)
@@ -253,6 +314,46 @@ class EmpleadosWidget(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error al desactivar empleado: {str(e)}")
     
+    def activar_empleado(self, empleado_id):
+        try:
+            reply = QMessageBox.question(
+                self, 
+                "Confirmar", 
+                "¿Está seguro de que desea activar este empleado?",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            
+            if reply == QMessageBox.Yes:
+                if self.empleado_model.actualizarEmpleado(empleado_id, {'activo': 1}):
+                    QMessageBox.information(self, "Éxito", "Empleado activado correctamente.")
+                    self.cargar_empleados()
+                else:
+                    QMessageBox.warning(self, "Error", "No se pudo activar el empleado.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Error al activar empleado: {str(e)}")
+    
+    def eliminar_empleado(self, empleado_id):
+        try:
+            if empleado_id == 3:
+                QMessageBox.warning(self, "Error", "No se puede eliminar al administrador principal.")
+                return
+            
+            reply = QMessageBox.question(
+                self, 
+                "Confirmar Eliminacion", 
+                "¿Está SEGURO de que desea ELIMINAR permanentemente este empleado?\nEsta accion NO se puede deshacer.",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            
+            if reply == QMessageBox.Yes:
+                if self.empleado_model.eliminarRegistroID(empleado_id):
+                    QMessageBox.information(self, "Exito", "Empleado eliminado correctamente.")
+                    self.cargar_empleados()
+                else:
+                    QMessageBox.warning(self, "Error", "No se pudo eliminar el empleado.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Error al eliminar empleado: {str(e)}")
+
     def cambiar_contraseña(self, empleado_id):
         try:
             empleado = self.empleado_model.get_by_id(empleado_id)
@@ -472,8 +573,8 @@ class CambiarContrasenaDialog(QDialog):
         try:
             # Actualizar contraseña en la base de datos
             # El procesamiento de caracteres especiales se maneja en el modelo base
-            if self.empleado_model.actualizarEmpleado(self.empleado['id'], {'contraseña': nueva_password}):
-                QMessageBox.information(self, "Éxito", "Contraseña actualizada correctamente.")
+            resultado = self.empleado_model.actualizarEmpleado(self.empleado['id'], {'contraseña': nueva_password})
+            if resultado:
                 self.accept()
             else:
                 QMessageBox.critical(self, "Error", "No se pudo actualizar la contraseña.")

@@ -196,13 +196,10 @@ class VentasFrame(QWidget):
                 border-radius: 6px;
             }
         """)
-        
-        # Ajustar columnas del carrito
-        self.tabla_carrito.setColumnWidth(0, 243)  # Producto
-        self.tabla_carrito.setColumnWidth(1, 57)   # Cantidad
-        self.tabla_carrito.setColumnWidth(2, 69)   # Precio
-        self.tabla_carrito.setColumnWidth(3, 85)   # Total
-        self.tabla_carrito.setColumnWidth(4, 58)   # Acción
+
+        anchosC = [243, 57, 69, 85, 58]  # Producto, Cant., Precio, Total, Acción
+        for i, anchoC in enumerate(anchosC):
+            self.tabla_carrito.setColumnWidth(i, anchoC)
         
         right_layout.addWidget(self.tabla_carrito)
         
