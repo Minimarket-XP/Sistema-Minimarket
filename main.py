@@ -1,4 +1,4 @@
-## Sistema de Minimarket Don Manuelito - PyQt5 Version
+## Sistema de Minimarket Don Manuelito
 
 import sys
 import os
@@ -42,7 +42,7 @@ def main():
         
         # Configurar propiedades de la aplicación
         app.setApplicationName("Sistema Minimarket Don Manuelito")
-        app.setApplicationVersion("2.0.0 - PyQt5 Migration")
+        app.setApplicationVersion("2.1.0 - MVP")
 
         # Importar y crear la ventana principal de login
         from shared.login import LoginVentana
