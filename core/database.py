@@ -2,6 +2,8 @@
 
 import sqlite3
 import os
+from unittest import result
+import bcrypt
 from core.config import DB_DIR
 
 class Database:
@@ -187,10 +189,11 @@ class Database:
     def _insertar_datos_iniciales(self, cursor): # → Insertar datos iniciales del minimarket
 
         # Insertar usuario administrador por defecto
+        hashed_password = bcrypt.hashpw('admin'.encode('utf-8'), bcrypt.gensalt())
         cursor.execute('''
             INSERT OR IGNORE INTO empleados (nombre, apellido, usuario, contraseña, rol)
-            VALUES ('Administrador', 'Sistema', 'admin', 'admin', 'administrador')
-        ''')
+            VALUES ('Administrador', 'Sistema', 'admin', ?, 'administrador')
+        ''', (hashed_password,))
         
         # Insertar cliente genérico para boletas sin DNI
         cursor.execute('''
@@ -259,6 +262,22 @@ class Database:
         conn.close()
         
         return last_id
-
+    
+    def verificar_credenciales(self, usuario, contraseña):
+        query = "SELECT contraseña FROM empleados WHERE usuario = ? AND activo = 1"
+        result = self.execute_query(query, (usuario,))
+    
+        if not result:
+            return False
+    
+        hashed_password = result[0][0]
+    
+        # Verificar contraseña con bcrypt
+        try:
+            return bcrypt.checkpw(contraseña.encode('utf-8'), hashed_password)
+        except Exception as e:
+            print(f"Error verificando contraseña: {e}")
+            return False   
+        
 # Instancia global de la base de datos
 db = Database()
