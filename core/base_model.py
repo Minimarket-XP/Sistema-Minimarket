@@ -78,7 +78,10 @@ class BaseModel:  # Clase base para modelos CRUD
         # Procesar valores para manejar caracteres especiales
         processed_data = {}
         for k, v in valid_data.items():
-            if isinstance(v, str):
+            # Si es bytes (como contraseñas encriptadas con bcrypt), mantenerlo tal cual
+            if isinstance(v, bytes):
+                processed_data[k] = v
+            elif isinstance(v, str):
                 import unicodedata
                 try:
                     normalized_value = unicodedata.normalize('NFC', v)
