@@ -119,7 +119,7 @@ class Dashboard(QMainWindow):
         ]
         
         # Agregar gestión de empleados solo para administradores
-        if self.usuario_rol in ['admin']:
+        if self.usuario_rol in ['administrador', 'admin']:
             botones.insert(3, ("Empleados", self.mostrar_empleados))
         
         for texto, comando in botones:
@@ -159,7 +159,7 @@ class Dashboard(QMainWindow):
                 background-color: #c0392b;
             }}
         """)
-        btn_salir.clicked.connect(self.close)
+        btn_salir.clicked.connect(self.cerrar_sesion)
         layout.addWidget(btn_salir)
         
         return menu
@@ -263,7 +263,15 @@ class Dashboard(QMainWindow):
         self.main_content.addWidget(widget)
         self.main_content.setCurrentWidget(widget)
     
+    def cerrar_sesion(self):
+        """Cierra sesión y vuelve al login"""
+        self.hide()
+        from shared.login import LoginVentana
+        self.login_window = LoginVentana()
+        self.login_window.show()
+    
     def closeEvent(self, event):
+        """Cerrar toda la aplicación cuando se cierra el dashboard con la X"""
         from PyQt5.QtWidgets import QApplication
         QApplication.quit()
         event.accept()
