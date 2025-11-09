@@ -82,6 +82,7 @@ class Database:
                 fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 empleado_id INTEGER,
                 total REAL NOT NULL DEFAULT 0,
+                descuento REAL NOT NULL DEFAULT 0,
                 metodo_pago TEXT,
                 estado TEXT DEFAULT 'completada',
                 FOREIGN KEY (empleado_id) REFERENCES empleados (id)
@@ -164,6 +165,33 @@ class Database:
         self._insertar_datos_iniciales(cursor)
         
         conn.commit()
+        # Asegurar columna 'descuento' en tablas existentes (migración simple)
+        try:
+            cursor.execute("PRAGMA table_info(ventas)")
+            cols = [r[1] for r in cursor.fetchall()]
+            # Añadir columna 'descuento' si no existe
+            if 'descuento' not in cols:
+                cursor.execute('ALTER TABLE ventas ADD COLUMN descuento REAL NOT NULL DEFAULT 0')
+                conn.commit()
+            # Añadir columna 'descuento_pct' si no existe
+            if 'descuento_pct' not in cols:
+                cursor.execute('ALTER TABLE ventas ADD COLUMN descuento_pct REAL NOT NULL DEFAULT 0')
+                conn.commit()
+            # Añadir columna 'descuento_tipo' si no existe
+            if 'descuento_tipo' not in cols:
+                cursor.execute("ALTER TABLE ventas ADD COLUMN descuento_tipo TEXT DEFAULT ''")
+                conn.commit()
+            # Asegurar columna 'descuento' en detalle_ventas (puede ser NULL)
+            cursor.execute("PRAGMA table_info(detalle_ventas)")
+            cols_det = [r[1] for r in cursor.fetchall()]
+            if 'descuento' not in cols_det:
+                # Allow NULL so line may have no discount when global discount applies
+                cursor.execute("ALTER TABLE detalle_ventas ADD COLUMN descuento REAL")
+                conn.commit()
+        except Exception:
+            # Si la alteración falla, continuar sin detener la inicialización
+            pass
+
         conn.close()
     
     def _insertar_datos_iniciales(self, cursor): # → Insertar datos iniciales del minimarket
