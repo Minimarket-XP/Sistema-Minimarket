@@ -40,8 +40,8 @@ class EmpleadosWidget(QWidget):
         layout.addWidget(titulo)
         
         # Botón para crear empleado (solo para admin)
-        if self.usuario_rol == 'admin':
-            btn_crear = QPushButton("➕ Crear Empleado")
+        if self.usuario_rol == 'administrador':
+            btn_crear = QPushButton("Crear Empleado")
             btn_crear.setStyleSheet(f"""
                 QPushButton {{
                     background-color: {THEME_COLOR};
@@ -116,7 +116,7 @@ class EmpleadosWidget(QWidget):
         # Ajustar anchos de columnas
         header = self.tabla_empleados.horizontalHeader()
         header.setStretchLastSection(True)
-        anchos = [50, 150, 250, 120, 120, 120, 280]  # Anchos de columnas
+        anchos = [50, 150, 220, 200, 200, 120, 280]  # Anchos de columnas
         for i, ancho in enumerate(anchos):
             self.tabla_empleados.setColumnWidth(i, ancho)
         
@@ -140,7 +140,7 @@ class EmpleadosWidget(QWidget):
                 self.tabla_empleados.setItem(row, 3, QTableWidgetItem(empleado['usuario']))
                 # Rol
                 rol_item = QTableWidgetItem(empleado['rol'].title())
-                if empleado['rol'] == 'admin':
+                if empleado['rol'] == 'administrador':
                     rol_item.setForeground(Qt.red)
                     rol_item.setFont(QFont("Arial", 9, QFont.Bold))
                 else:
@@ -207,52 +207,54 @@ class EmpleadosWidget(QWidget):
                 btn_password.clicked.connect(lambda checked, emp_id=empleado['id']: self.cambiar_contraseña(emp_id))
                 
                 # Boton Activar/Desactivar segun estado
-                if empleado['activo']:
-                    btn_estado = QPushButton("Desactivar")
-                    btn_estado.setToolTip("Desactivar empleado")
-                    btn_estado.setStyleSheet("""
-                        QPushButton {
-                            background-color: #e74c3c;
-                            color: white;
-                            border: none;
-                            padding: 4px 8px;
-                            border-radius: 4px;
-                            font-weight: bold;
-                            font-size: 12px;
-                        }
-                        QPushButton:hover {
-                            background-color: #c0392b;
-                        }
-                    """)
-                    btn_estado.clicked.connect(lambda checked, emp_id=empleado['id']: self.desactivar_empleado(emp_id))
-                else:
-                    btn_estado = QPushButton("Activar")
-                    btn_estado.setToolTip("Activar empleado")
-                    btn_estado.setStyleSheet("""
-                        QPushButton {
-                            background-color: #27ae60;
-                            color: white;
-                            border: none;
-                            padding: 4px 8px;
-                            border-radius: 4px;
-                            font-weight: bold;
-                            font-size: 12px;
-                        }
-                        QPushButton:hover {
-                            background-color: #219150;
-                        }
-                    """)
-                    btn_estado.clicked.connect(lambda checked, emp_id=empleado['id']: self.activar_empleado(emp_id))
+                if empleado["usuario"] != "admin":
+                    if empleado['activo']:
+                        btn_estado = QPushButton("Desactivar")
+                        btn_estado.setToolTip("Desactivar empleado")
+                        btn_estado.setStyleSheet("""
+                            QPushButton {
+                                background-color: #e74c3c;
+                                color: white;
+                                border: none;
+                                padding: 4px 8px;
+                                border-radius: 4px;
+                                font-weight: bold;
+                                font-size: 12px;
+                            }
+                            QPushButton:hover {
+                                background-color: #c0392b;
+                            }
+                        """)
+                        btn_estado.clicked.connect(lambda checked, emp_id=empleado['id']: self.desactivar_empleado(emp_id))
+                    else:
+                        btn_estado = QPushButton("Activar")
+                        btn_estado.setToolTip("Activar empleado")
+                        btn_estado.setStyleSheet("""
+                            QPushButton {
+                                background-color: #27ae60;
+                                color: white;
+                                border: none;
+                                padding: 4px 8px;
+                                border-radius: 4px;
+                                font-weight: bold;
+                                font-size: 12px;
+                            }
+                            QPushButton:hover {
+                                background-color: #219150;
+                            }
+                        """)
+                        btn_estado.clicked.connect(lambda checked, emp_id=empleado['id']: self.activar_empleado(emp_id))
                 
-                btn_estado.setFixedHeight(20)
-                btn_estado.setMinimumWidth(90)
-
+                    btn_estado.setFixedHeight(20)
+                    btn_estado.setMinimumWidth(90)
+                else:
+                    btn_estado = QLabel("") 
                 btn_layout.addWidget(btn_editar)
                 btn_layout.addWidget(btn_password)
                 btn_layout.addWidget(btn_estado)
                 
                 # Boton Eliminar solo si NO es admin
-                if empleado['id'] != 3:  # ID 3 es el admin principal
+                if empleado['nombre'] != "Administrador":
                     btn_eliminar = QPushButton("Eliminar")
                     btn_eliminar.setToolTip("Eliminar empleado")
                     btn_eliminar.setFixedHeight(20)
@@ -334,7 +336,7 @@ class EmpleadosWidget(QWidget):
     
     def eliminar_empleado(self, empleado_id):
         try:
-            if empleado_id == 3:
+            if empleado_id == 1:
                 QMessageBox.warning(self, "Error", "No se puede eliminar al administrador principal.")
                 return
             
@@ -358,30 +360,11 @@ class EmpleadosWidget(QWidget):
         try:
             empleado = self.empleado_model.get_by_id(empleado_id)
             if empleado:
-                # Verificar que los datos del empleado no tengan problemas de encoding
-                try:
-                    # Intentar acceder a los campos para detectar problemas de encoding temprano
-                    _ = str(empleado.get('usuario', ''))
-                    _ = str(empleado.get('nombre', ''))
-                    _ = str(empleado.get('apellido', ''))
-                except (UnicodeError, UnicodeEncodeError, UnicodeDecodeError):
-                    QMessageBox.critical(self, "Error de Codificación", 
-                                       "Los datos del empleado contienen caracteres especiales que no se pueden procesar.\n"
-                                       "Contacte al administrador del sistema.")
-                    return
-                
                 dialog = CambiarContrasenaDialog(self, empleado)
                 if dialog.exec_() == QDialog.Accepted:
                     QMessageBox.information(self, "Éxito", "Contraseña cambiada correctamente.")
         except Exception as e:
-            error_msg = str(e)
-            if 'ascii' in error_msg.lower() or 'encode' in error_msg.lower() or 'unicode' in error_msg.lower():
-                QMessageBox.critical(self, "Error de Codificación", 
-                                   "Error de codificación al procesar los datos del empleado.\n"
-                                   "Esto puede deberse a caracteres especiales en el nombre o usuario.\n"
-                                   "Contacte al administrador del sistema.")
-            else:
-                QMessageBox.critical(self, "Error", f"Error al cambiar contraseña: {error_msg}")
+            QMessageBox.critical(self, "Error", f"Error al cambiar contraseña: {str(e)}")
 
 
 class CambiarContrasenaDialog(QDialog):
@@ -415,22 +398,11 @@ class CambiarContrasenaDialog(QDialog):
         """)
         layout.addWidget(titulo)
         
-        # Información del empleado
-        try:
-            # Manejar caracteres especiales en los datos del empleado
-            usuario = str(self.empleado.get('usuario', '')).encode('utf-8', 'replace').decode('utf-8')
-            nombre = str(self.empleado.get('nombre', '')).encode('utf-8', 'replace').decode('utf-8')
-            apellido = str(self.empleado.get('apellido', '')).encode('utf-8', 'replace').decode('utf-8')
-            
-            info_text = f"Usuario: {usuario}\nNombre: {nombre} {apellido}"
-            info_empleado = QLabel(info_text)
-        except (UnicodeError, UnicodeEncodeError, UnicodeDecodeError) as e:
-            # Si hay problemas de encoding, usar información básica
-            info_empleado = QLabel("Usuario: [Error de codificación]\nNombre: [Error de codificación]")
-        except Exception as e:
-            # Fallback para cualquier otro error
-            info_empleado = QLabel("Información del empleado no disponible")
-            
+        # Información del empleado - Simplificado sin mostrar nombres con caracteres especiales
+        usuario = self.empleado.get('usuario', 'N/A')
+        info_text = "Usuario: " + str(usuario) + "\n(Haga click en Cambiar para continuar)"
+        
+        info_empleado = QLabel(info_text)
         info_empleado.setAlignment(Qt.AlignCenter)
         info_empleado.setStyleSheet("""
             QLabel {
@@ -572,20 +544,16 @@ class CambiarContrasenaDialog(QDialog):
         
         try:
             # Actualizar contraseña en la base de datos
-            # El procesamiento de caracteres especiales se maneja en el modelo base
-            resultado = self.empleado_model.actualizarEmpleado(self.empleado['id'], {'contraseña': nueva_password})
+            resultado = self.empleado_model.actualizarEmpleado(
+                self.empleado['id'], 
+                {'contraseña': nueva_password}
+            )
             if resultado:
                 self.accept()
             else:
                 QMessageBox.critical(self, "Error", "No se pudo actualizar la contraseña.")
         except Exception as e:
-            error_msg = str(e)
-            if 'ascii' in error_msg.lower() or 'encode' in error_msg.lower():
-                QMessageBox.critical(self, "Error de Codificación", 
-                                   "Error al procesar caracteres especiales en la contraseña.\n"
-                                   "Intente usar una contraseña sin caracteres especiales como ñ, á, é, etc.")
-            else:
-                QMessageBox.critical(self, "Error", f"Error al cambiar contraseña: {error_msg}")
+            QMessageBox.critical(self, "Error", f"Error al cambiar contraseña: {str(e)}")
 
 
 class CrearEmpleadoDialog(QDialog):
@@ -660,7 +628,7 @@ class CrearEmpleadoDialog(QDialog):
         rol_label.setStyleSheet(self.get_label_style())
         
         self.rol_combo = QComboBox()
-        self.rol_combo.addItems(["empleado", "admin"])
+        self.rol_combo.addItems(["administrador", "vendedor", "cajero", "personal de limpieza"])
         self.rol_combo.setStyleSheet(self.get_input_style())
         
         rol_layout.addWidget(rol_label)

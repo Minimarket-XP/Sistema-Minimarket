@@ -1,5 +1,6 @@
 ## Modelo para manejar los datos de empleados - SQLite
 
+import bcrypt
 from core.base_model import BaseModel
 
 class EmpleadoModel(BaseModel):
@@ -8,22 +9,27 @@ class EmpleadoModel(BaseModel):
         columns = ['id', 'nombre', 'apellido', 'usuario', 'contraseña', 'rol', 'activo']
         super().__init__('empleados', columns)
     
-    def validarCredenciales(self, usuario, password):
+    def validar_credenciales(self, usuario, password):
+        """Valida las credenciales usando bcrypt para comparar contraseñas encriptadas"""
         try:
-            empleados = self.get_all(
-                "usuario = ? AND contraseña = ? AND activo = 1",
-                (usuario, password)
-            )
-            return len(empleados) > 0
+            # Obtener el empleado por usuario
+            empleados = self.get_all("usuario = ? AND activo = 1", (usuario,))
+            if not empleados:
+                return False
+            # Obtener la contraseña encriptada de la base de datos (get_all retorna diccionarios)
+            empleado = empleados[0]
+            hashed_password = empleado['contraseña']  # Acceder por nombre de columna
+            # Si es bytes, usar directamente; si es string, codificar
+            if isinstance(hashed_password, str):
+                hashed_password = hashed_password.encode('utf-8')
+            
+            # Verificar contraseña con bcrypt
+            return bcrypt.checkpw(password.encode('utf-8'), hashed_password)
+            
         except Exception as e:
             print(f"Error validando credenciales: {e}")
-            # Credenciales por defecto si hay error
-            return usuario == "admin" and password == "admin"
-    
-    def validar_credenciales(self, usuario, password):
-        """Alias para compatibilidad con el sistema de login"""
-        return self.validarCredenciales(usuario, password)
-    
+            return False
+
     def obtenerUsuario(self, usuario):
         try:
             empleados = self.get_all("usuario = ? AND activo = 1", (usuario,))
@@ -33,16 +39,20 @@ class EmpleadoModel(BaseModel):
             return None
     
     def crear_empleado(self, nombre, apellido, usuario, contraseña, rol='empleado'):
+        """Crea un empleado con contraseña encriptada"""
         try:
             # Verificar que el usuario no exista
             if self.obtenerUsuario(usuario):
                 raise ValueError(f"El usuario '{usuario}' ya existe")
             
+            # Encriptar la contraseña antes de guardar
+            hashed_password = bcrypt.hashpw(contraseña.encode('utf-8'), bcrypt.gensalt())
+            
             empleado_data = {
                 'nombre': nombre,
                 'apellido': apellido,
                 'usuario': usuario,
-                'contraseña': contraseña,
+                'contraseña': hashed_password,  # Guardar la contraseña encriptada
                 'rol': rol,
                 'activo': 1
             }
@@ -53,7 +63,15 @@ class EmpleadoModel(BaseModel):
             raise
     
     def actualizarEmpleado(self, empleado_id, datos):
+        """Actualiza un empleado. Si se actualiza la contraseña, la encripta"""
         try:
+            # Si se está actualizando la contraseña, encriptarla
+            if 'contraseña' in datos and datos['contraseña']:
+                datos['contraseña'] = bcrypt.hashpw(
+                    datos['contraseña'].encode('utf-8'), 
+                    bcrypt.gensalt()
+                )
+            
             return self.actualizarRegistroID(empleado_id, datos)
         except Exception as e:
             print(f"Error actualizando empleado: {e}")
