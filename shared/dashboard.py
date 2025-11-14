@@ -211,8 +211,15 @@ class Dashboard(QMainWindow):
     
     def mostrar_reportes(self):
         self.limpiar_contenido()
-        self.mostrar_error("Reportes", "Próximamente en Sprint 2")
-    
+        try:
+            from modules.reportes.reportes_view import ReportesFrame
+            reportes = ReportesFrame(self)
+            self.main_content.addWidget(reportes)
+            self.main_content.setCurrentWidget(reportes)
+        except Exception as e:
+            print("ERROR aquí", e)
+            self.mostrar_error("Reportes", str(e))
+
     def mostrar_empleados(self):
         self.limpiar_contenido()
         try:
