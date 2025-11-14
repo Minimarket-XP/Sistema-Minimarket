@@ -88,7 +88,7 @@ class Database:
                 descuento REAL NOT NULL DEFAULT 0,
                 metodo_pago TEXT,
                 estado TEXT DEFAULT 'completada',
-                descuento REAL DEFAULT 0,
+                descuento REAL NOT NULL DEFAULT 0,
                 FOREIGN KEY (empleado_id) REFERENCES empleados (id)
             )
         ''')
@@ -157,11 +157,20 @@ class Database:
         self._insertar_datos_iniciales(cursor)
         
         conn.commit()
+<<<<<<< HEAD
         # Asegurar columna 'descuento' en tablas existentes (migración simple)
         try:
             cursor.execute("PRAGMA table_info(ventas)")
             cols = [r[1] for r in cursor.fetchall()]
             # Añadir columna 'descuento' si no existe
+=======
+
+        # Migracion simple en la columna descuento en tabla existentes
+        try:
+            cursor.execute("PRAGMA table_info(ventas)")
+            cols = [r[1] for r in cursor.fetchall()]
+            # Añadir columna descuento si no existe
+>>>>>>> dcd6b0d (Implemented migration for adding 'descuento', 'descuento_pct', and 'descuento_tipo' columns to 'ventas' and 'detalle_ventas' tables)
             if 'descuento' not in cols:
                 cursor.execute('ALTER TABLE ventas ADD COLUMN descuento REAL NOT NULL DEFAULT 0')
                 conn.commit()
@@ -181,9 +190,13 @@ class Database:
                 cursor.execute("ALTER TABLE detalle_ventas ADD COLUMN descuento REAL")
                 conn.commit()
         except Exception:
+<<<<<<< HEAD
             # Si la alteración falla, continuar sin detener la inicialización
             pass
 
+=======
+            pass
+>>>>>>> dcd6b0d (Implemented migration for adding 'descuento', 'descuento_pct', and 'descuento_tipo' columns to 'ventas' and 'detalle_ventas' tables)
         conn.close()
     
     def _insertar_datos_iniciales(self, cursor): # → Insertar datos iniciales del minimarket
