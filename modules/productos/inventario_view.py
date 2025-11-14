@@ -1,7 +1,6 @@
 ## Módulo de Inventario
 
-import os
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QPushButton, QTableWidget, QTableWidgetItem, 
                              QHeaderView, QMessageBox, QAbstractItemView)
 from PyQt5.QtCore import Qt
@@ -117,10 +116,10 @@ class InventarioFrame(QWidget):
         botones_layout.setSpacing(10)
         
         # Crear botones
-        btn_agregar = self.crearBoton("➕ Agregar Producto", SUCCESS_COLOR, self.agregarProducto)
-        btn_modificar = self.crearBoton("✏️ Modificar Producto", INFO_COLOR, self.modificarProducto)
-        btn_eliminar = self.crearBoton("🗑️ Eliminar Producto", ERROR_COLOR, self.eliminarProducto)
-        btn_refrescar = self.crearBoton("🔃 Refrescar", "#2980b9", self.mostrarInventario)
+        btn_agregar = self.crearBoton("Agregar Producto", SUCCESS_COLOR, self.agregarProducto)
+        btn_modificar = self.crearBoton("Modificar Producto", INFO_COLOR, self.modificarProducto)
+        btn_eliminar = self.crearBoton("Eliminar Producto", ERROR_COLOR, self.eliminarProducto)
+        btn_refrescar = self.crearBoton("Refrescar", "#2980b9", self.mostrarInventario)
         
         botones_layout.addWidget(btn_agregar)
         botones_layout.addWidget(btn_modificar)
@@ -381,7 +380,6 @@ class ModificarProductoForm(ProductoForm):
         self.entries["Precio"].setText(str(prod_precio))
         # Accede al QLineEdit para "Stock inicial"
         self.entries["Stock inicial"].setText(str(prod_stock))
-        # El combo box de categoría ya estaba nombrado correctamente
         index = self.categoria_cb.findText(prod_categoria)
         if index >= 0:
             self.categoria_cb.setCurrentIndex(index)

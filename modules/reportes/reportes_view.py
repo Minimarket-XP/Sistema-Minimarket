@@ -29,16 +29,74 @@ class ReportesFrame(QWidget):
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        titulo = QLabel("Reportes")
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+
+        # Título con estilo moderno
+        titulo = QLabel("Reportes y Análisis")
         titulo.setAlignment(Qt.AlignCenter)
+        titulo.setStyleSheet("""
+            QLabel {
+                font-size: 26px;
+                font-weight: bold;
+                color: #2c3e50;
+                padding: 15px;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #3498db, stop:1 #2980b9);
+                color: white;
+                border-radius: 8px;
+                margin-bottom: 10px;
+            }
+        """)
         layout.addWidget(titulo)
 
-        # Filtros de fecha y granularidad
-        filtros_layout = QHBoxLayout()
+        # Panel de filtros con fondo y bordes
+        filtros_widget = QWidget()
+        filtros_widget.setStyleSheet("""
+            QWidget {
+                background-color: #f8f9fa;
+                border-radius: 10px;
+                padding: 15px;
+            }
+        """)
+        filtros_layout = QHBoxLayout(filtros_widget)
+        filtros_layout.setSpacing(10)
+
+        # Estilo para labels
+        label_style = """
+            QLabel {
+                font-weight: bold;
+                color: #34495e;
+                font-size: 13px;
+            }
+        """
+
+        # Estilo para date edits y combos
+        input_style = """
+            QDateEdit, QComboBox {
+                padding: 8px 12px;
+                border: 2px solid #bdc3c7;
+                border-radius: 6px;
+                background-color: white;
+                font-size: 13px;
+                min-width: 160px;
+            }
+            QDateEdit:focus, QComboBox:focus {
+                border: 2px solid #3498db;
+            }
+            QDateEdit::drop-down, QComboBox::drop-down {
+                border: none;
+                width: 25px;
+            }
+        """
+
         self.fecha_desde = QDateEdit(QDate.currentDate().addDays(-7))
         self.fecha_hasta = QDateEdit(QDate.currentDate())
         self.fecha_desde.setCalendarPopup(True)
         self.fecha_hasta.setCalendarPopup(True)
+        self.fecha_desde.setStyleSheet(input_style)
+        self.fecha_hasta.setStyleSheet(input_style)
+
         # Set minimum allowed date to first sale date if available
         try:
             min_fecha = self._get_min_fecha_venta()
@@ -51,26 +109,84 @@ class ReportesFrame(QWidget):
                     self.fecha_desde.setDate(qmin)
         except Exception:
             pass
-        filtros_layout.addWidget(QLabel("Desde:"))
+
+        lbl_desde = QLabel("Desde:")
+        lbl_desde.setStyleSheet(label_style)
+        filtros_layout.addWidget(lbl_desde)
         filtros_layout.addWidget(self.fecha_desde)
-        filtros_layout.addWidget(QLabel("Hasta:"))
+
+        lbl_hasta = QLabel("Hasta:")
+        lbl_hasta.setStyleSheet(label_style)
+        filtros_layout.addWidget(lbl_hasta)
         filtros_layout.addWidget(self.fecha_hasta)
 
         self.lbl_periodo = QLabel("Periodo:")
+        self.lbl_periodo.setStyleSheet(label_style)
         filtros_layout.addWidget(self.lbl_periodo)
         self.combo_periodo = QComboBox()
         self.combo_periodo.addItems(["Diario", "Semanal", "Mensual"])
+        self.combo_periodo.setStyleSheet(input_style)
         filtros_layout.addWidget(self.combo_periodo)
 
+        filtros_layout.addStretch()
+
         btn_refresh = QPushButton("Actualizar")
+        btn_refresh.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                padding: 10px 25px;
+                font-size: 13px;
+                font-weight: bold;
+                border-radius: 6px;
+                min-width: 120px;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            }
+            QPushButton:pressed {
+                background-color: #21618c;
+            }
+        """)
         btn_refresh.clicked.connect(self.actualizar)
         filtros_layout.addWidget(btn_refresh)
-        layout.addLayout(filtros_layout)
+        layout.addWidget(filtros_widget)
 
         self.tabs = QTabWidget()
+        self.tabs.setStyleSheet("""
+            QTabWidget::pane {
+                border: 2px solid #bdc3c7;
+                border-radius: 8px;
+                background-color: white;
+                padding: 10px;
+            }
+            QTabBar::tab {
+                background-color: #ecf0f1;
+                color: #2c3e50;
+                padding: 12px 25px;
+                margin-right: 5px;
+                border-top-left-radius: 6px;
+                border-top-right-radius: 6px;
+                font-weight: bold;
+                font-size: 13px;
+            }
+            QTabBar::tab:selected {
+                background-color: #3498db;
+                color: white;
+            }
+            QTabBar::tab:hover:!selected {
+                background-color: #d5dbdb;
+            }
+        """)
+
         # Tab 1: Ventas por periodo
         self.tab_ventas = QWidget()
         v1 = QVBoxLayout(self.tab_ventas)
+        v1.setContentsMargins(15, 15, 15, 15)
+        v1.setSpacing(15)
+        self.tab_ventas.setMinimumWidth(300)
+
         # Try to import matplotlib and prepare canvases; if missing, show a helpful label
         try:
             from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -80,7 +196,7 @@ class ReportesFrame(QWidget):
             self._has_mpl = False
 
         if self._has_mpl:
-            self.canvas1 = FigureCanvas(Figure(figsize=(8, 3)))
+            self.canvas1 = FigureCanvas(Figure(figsize=(10, 4), facecolor='white'))
             # allow canvas to expand and resize
             self.canvas1.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
             v1.addWidget(self.canvas1)
@@ -93,14 +209,17 @@ class ReportesFrame(QWidget):
         self.tabs.addTab(self.tab_ventas, "Ventas por periodo")
         # Tabla debajo del gráfico (ventas)
         self.table_ventas = QTableWidget()
+        self._style_table(self.table_ventas)
         v1.addWidget(self.table_ventas)
 
         # Tab 2: Productos más vendidos
         self.tab_prod = QWidget()
         v2 = QVBoxLayout(self.tab_prod)
+        v2.setContentsMargins(15, 15, 15, 15)
+        v2.setSpacing(15)
         if self._has_mpl:
             # make canvas wider and slightly taller so bars have room
-            self.canvas2 = FigureCanvas(Figure(figsize=(10, 4)))
+            self.canvas2 = FigureCanvas(Figure(figsize=(12, 5), facecolor='white'))
             self.canvas2.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
             v2.addWidget(self.canvas2)
             self.placeholder2 = None
@@ -112,13 +231,16 @@ class ReportesFrame(QWidget):
         self.tabs.addTab(self.tab_prod, "Productos Top 10")
         # Tabla debajo del gráfico (productos)
         self.table_prod = QTableWidget()
+        self._style_table(self.table_prod)
         v2.addWidget(self.table_prod)
 
         # Tab 3: Ganancias y pérdidas
         self.tab_gan = QWidget()
         v3 = QVBoxLayout(self.tab_gan)
+        v3.setContentsMargins(15, 15, 15, 15)
+        v3.setSpacing(15)
         if self._has_mpl:
-            self.canvas3 = FigureCanvas(Figure(figsize=(8, 3)))
+            self.canvas3 = FigureCanvas(Figure(figsize=(10, 4), facecolor='white'))
             self.canvas3.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
             v3.addWidget(self.canvas3)
             self.placeholder3 = None
@@ -130,6 +252,7 @@ class ReportesFrame(QWidget):
         self.tabs.addTab(self.tab_gan, "Ganancias/Pérdidas")
         # Tabla debajo del gráfico (resumen)
         self.table_gan = QTableWidget()
+        self._style_table(self.table_gan)
         v3.addWidget(self.table_gan)
 
         layout.addWidget(self.tabs)
@@ -142,18 +265,133 @@ class ReportesFrame(QWidget):
         except Exception:
             pass
 
-        # Botones exportar (actúan sobre la pestaña activa)
+        # Botones exportar con diseño mejorado
+        export_widget = QWidget()
+        export_widget.setStyleSheet("""
+            QWidget {
+                background-color: #f8f9fa;
+                border-radius: 8px;
+                padding: 10px;
+            }
+        """)
+        h = QHBoxLayout(export_widget)
+        h.setSpacing(15)
+        h.addStretch()
+
         btn_export_pdf = QPushButton("Exportar PDF")
+        btn_export_pdf.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c;
+                color: white;
+                border: none;
+                padding: 12px 30px;
+                font-size: 13px;
+                font-weight: bold;
+                border-radius: 6px;
+                min-width: 160px;
+            }
+            QPushButton:hover {
+                background-color: #c0392b;
+            }
+            QPushButton:pressed {
+                background-color: #a93226;
+            }
+        """)
         btn_export_pdf.clicked.connect(lambda: self.exportar(forma='pdf'))
+
         btn_export_xlsx = QPushButton("Exportar Excel")
+        btn_export_xlsx.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                padding: 12px 30px;
+                font-size: 13px;
+                font-weight: bold;
+                border-radius: 6px;
+                min-width: 160px;
+            }
+            QPushButton:hover {
+                background-color: #229954;
+            }
+            QPushButton:pressed {
+                background-color: #1e8449;
+            }
+        """)
         btn_export_xlsx.clicked.connect(lambda: self.exportar(forma='xlsx'))
-        h = QHBoxLayout()
+
         h.addWidget(btn_export_pdf)
         h.addWidget(btn_export_xlsx)
-        layout.addLayout(h)
+        h.addStretch()
+        layout.addWidget(export_widget)
 
         # Inicializar gráficos
         self.actualizar()
+
+    def _style_table(self, table):
+        """Aplica estilos modernos a una tabla"""
+        table.setStyleSheet("""
+            QTableWidget {
+                background-color: white;
+                alternate-background-color: #f8f9fa;
+                border: 1px solid #dee2e6;
+                border-radius: 6px;
+                gridline-color: #dee2e6;
+                font-size: 12px;
+            }
+            QTableWidget::item {
+                padding: 8px;
+                border-bottom: 1px solid #e9ecef;
+            }
+            QTableWidget::item:selected {
+                background-color: #3498db;
+                color: white;
+            }
+            QHeaderView::section {
+                background-color: #34495e;
+                color: white;
+                padding: 10px;
+                border: none;
+                font-weight: bold;
+                font-size: 13px;
+            }
+            QHeaderView::section:first {
+                border-top-left-radius: 6px;
+            }
+            QHeaderView::section:last {
+                border-top-right-radius: 6px;
+            }
+            QScrollBar:vertical {
+                border: none;
+                background-color: #f8f9fa;
+                width: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background-color: #bdc3c7;
+                border-radius: 6px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background-color: #95a5a6;
+            }
+            QScrollBar:horizontal {
+                border: none;
+                background-color: #f8f9fa;
+                height: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:horizontal {
+                background-color: #bdc3c7;
+                border-radius: 6px;
+                min-width: 20px;
+            }
+            QScrollBar::handle:horizontal:hover {
+                background-color: #95a5a6;
+            }
+        """)
+        table.setAlternatingRowColors(True)
+        table.verticalHeader().setVisible(False)
 
     def _on_tab_changed(self, index: int):
         """Hide periodo controls for tabs other than 'Ventas por periodo' (index 0)."""
@@ -268,13 +506,32 @@ class ReportesFrame(QWidget):
                         pass
 
                 # Plot using the aggregated series that is used for the table
-                series.plot(ax=ax1, marker='o')
-                ax1.set_title(f"Ventas ({periodo})")
-                ax1.set_ylabel('Total neto')
-                ax1.grid(True, linestyle='--', alpha=0.4)
+                series.plot(ax=ax1, marker='o', linewidth=2.5, markersize=8,
+                          color='#3498db', markerfacecolor='#2980b9',
+                          markeredgecolor='white', markeredgewidth=2)
+
+                # Agregar área de relleno bajo la línea
+                ax1.fill_between(series.index, series.values, alpha=0.3, color='#3498db')
+
+                ax1.set_title(f"Ventas ({periodo})", fontsize=16, fontweight='bold',
+                            color='#2c3e50', pad=20)
+                ax1.set_ylabel('Total neto ($)', fontsize=12, fontweight='bold', color='#34495e')
+                ax1.set_xlabel('Fecha', fontsize=12, fontweight='bold', color='#34495e')
+
+                # Grid más sutil y profesional
+                ax1.grid(True, linestyle='--', alpha=0.3, color='#bdc3c7', linewidth=0.8)
+                ax1.set_facecolor('#f8f9fa')
+
+                # Mejorar los ticks
+                ax1.tick_params(colors='#34495e', labelsize=10)
                 for lbl in ax1.get_xticklabels():
                     lbl.set_rotation(45)
                     lbl.set_ha('right')
+
+                # Agregar borde al gráfico
+                for spine in ax1.spines.values():
+                    spine.set_edgecolor('#bdc3c7')
+                    spine.set_linewidth(1.5)
                 # Set x-axis limits based on the selected date range so the
                 # left/right extremes match the Desde/Hasta controls.
                 try:
@@ -336,17 +593,48 @@ class ReportesFrame(QWidget):
                 names = df_p['producto_nombre'].astype(str).tolist()
                 values = df_p['total_vendido'].tolist()
                 positions = list(range(len(names)))
-                # draw bars
-                ax2.bar(positions, values, color='#3498db', width=0.6)
+
+                # Crear gradiente de colores del más oscuro al más claro
+                colors = ['#1f77b4', '#2980b9', '#3498db', '#5dade2', '#7fb3d5',
+                         '#a2c4e0', '#aed6f1', '#d4e6f1', '#e8f4f8', '#f0f8ff']
+                bar_colors = colors[:len(names)]
+
+                # draw bars con colores degradados
+                bars = ax2.bar(positions, values, color=bar_colors, width=0.7,
+                              edgecolor='white', linewidth=2)
+
+                # Agregar valores sobre las barras
+                for i, (bar, val) in enumerate(zip(bars, values)):
+                    height = bar.get_height()
+                    ax2.text(bar.get_x() + bar.get_width()/2., height,
+                            f'{int(val)}', ha='center', va='bottom',
+                            fontweight='bold', fontsize=10, color='#2c3e50')
+
                 ax2.set_xticks(positions)
                 # reduce font size for long product names and rotate for readability
-                ax2.set_xticklabels(names, rotation=45, ha='right', fontsize=8)
-                ax2.tick_params(axis='x', which='major', labelsize=8)
-                ax2.set_title('Top 10 Productos más vendidos')
-                ax2.grid(axis='y', linestyle='--', alpha=0.4)
+                ax2.set_xticklabels(names, rotation=45, ha='right', fontsize=10)
+                ax2.tick_params(axis='x', which='major', labelsize=10, colors='#34495e')
+                ax2.tick_params(axis='y', colors='#34495e')
+
+                ax2.set_title('Top 10 Productos más vendidos', fontsize=16,
+                            fontweight='bold', color='#2c3e50', pad=20)
+                ax2.set_ylabel('Cantidad vendida', fontsize=12, fontweight='bold',
+                             color='#34495e')
+                ax2.set_xlabel('Productos', fontsize=12, fontweight='bold',
+                             color='#34495e')
+
+                # Grid más sutil
+                ax2.grid(axis='y', linestyle='--', alpha=0.3, color='#bdc3c7', linewidth=0.8)
+                ax2.set_facecolor('#f8f9fa')
+
+                # Mejorar bordes
+                for spine in ax2.spines.values():
+                    spine.set_edgecolor('#bdc3c7')
+                    spine.set_linewidth(1.5)
+
                 # leave extra bottom margin so rotated labels don't overlap
                 try:
-                    self.canvas2.figure.subplots_adjust(bottom=0.30)
+                    self.canvas2.figure.subplots_adjust(bottom=0.25, top=0.92)
                 except Exception:
                     pass
             else:
@@ -363,14 +651,29 @@ class ReportesFrame(QWidget):
         # Poblar tabla de productos
         try:
             cols_p = list(df_p.columns)
+            # Traducir nombres de columnas
+            col_map = {
+                'producto_nombre': 'Producto',
+                'total_vendido': 'Cantidad Vendida',
+                'ingresos_totales': 'Ingresos Totales ($)'
+            }
+            display_cols_p = [col_map.get(c, c) for c in cols_p]
+
             self.table_prod.setColumnCount(len(cols_p))
             self.table_prod.setRowCount(len(df_p.index))
-            self.table_prod.setHorizontalHeaderLabels(cols_p)
+            self.table_prod.setHorizontalHeaderLabels(display_cols_p)
             for r_idx in range(len(df_p.index)):
                 for c, col in enumerate(cols_p):
                     val = df_p.iloc[r_idx][col]
-                    self.table_prod.setItem(r_idx, c, QTableWidgetItem(str(val)))
+                    item = QTableWidgetItem(str(val))
+                    # Alinear números a la derecha y texto al centro
+                    if c == 0:  # nombre del producto
+                        item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                    else:
+                        item.setTextAlignment(Qt.AlignCenter)
+                    self.table_prod.setItem(r_idx, c, item)
             self.table_prod.resizeColumnsToContents()
+            self.table_prod.horizontalHeader().setStretchLastSection(True)
         except Exception:
             # limpiar tabla
             self.table_prod.setRowCount(0)
@@ -392,13 +695,42 @@ class ReportesFrame(QWidget):
                 total_discount = df_v['descuento'].sum()
                 labels = ['Bruto', 'Descuentos', 'Neto']
                 values = [total_gross, total_discount, total_net]
-                ax3.bar(labels, values, color=['#2ecc71', '#e74c3c', '#3498db'])
-                ax3.set_title('Resumen de ingresos y descuentos')
-                ax3.grid(axis='y', linestyle='--', alpha=0.4)
+                colors = ['#27ae60', '#e74c3c', '#3498db']
+
+                bars = ax3.bar(labels, values, color=colors, width=0.6,
+                              edgecolor='white', linewidth=2)
+
+                # Agregar valores sobre las barras
+                for bar, val in zip(bars, values):
+                    height = bar.get_height()
+                    ax3.text(bar.get_x() + bar.get_width()/2., height,
+                            f'${val:.2f}', ha='center', va='bottom',
+                            fontweight='bold', fontsize=12, color='#2c3e50')
+
+                ax3.set_title('Resumen de ingresos y descuentos', fontsize=16,
+                            fontweight='bold', color='#2c3e50', pad=20)
+                ax3.set_ylabel('Monto ($)', fontsize=12, fontweight='bold',
+                             color='#34495e')
+
+                # Grid más sutil
+                ax3.grid(axis='y', linestyle='--', alpha=0.3, color='#bdc3c7', linewidth=0.8)
+                ax3.set_facecolor('#f8f9fa')
+
+                # Mejorar ticks
+                ax3.tick_params(colors='#34495e', labelsize=11)
+
+                # Mejorar bordes
+                for spine in ax3.spines.values():
+                    spine.set_edgecolor('#bdc3c7')
+                    spine.set_linewidth(1.5)
 
                 # Poblar tabla resumen
                 try:
-                    df_summary = pd.DataFrame([{'Bruto': total_gross, 'Descuentos': total_discount, 'Neto': total_net}])
+                    df_summary = pd.DataFrame([{
+                        'Bruto': f'${total_gross:.2f}',
+                        'Descuentos': f'${total_discount:.2f}',
+                        'Neto': f'${total_net:.2f}'
+                    }])
                     cols_s = list(df_summary.columns)
                     self.table_gan.setColumnCount(len(cols_s))
                     self.table_gan.setRowCount(len(df_summary.index))
@@ -406,8 +738,11 @@ class ReportesFrame(QWidget):
                     for r_idx in range(len(df_summary.index)):
                         for c, col in enumerate(cols_s):
                             val = df_summary.iloc[r_idx][col]
-                            self.table_gan.setItem(r_idx, c, QTableWidgetItem(str(val)))
+                            item = QTableWidgetItem(str(val))
+                            item.setTextAlignment(Qt.AlignCenter)
+                            self.table_gan.setItem(r_idx, c, item)
                     self.table_gan.resizeColumnsToContents()
+                    self.table_gan.horizontalHeader().setStretchLastSection(True)
                 except Exception:
                     self.table_gan.setRowCount(0)
                     self.table_gan.setColumnCount(0)
@@ -445,8 +780,12 @@ class ReportesFrame(QWidget):
                 for r_idx in range(len(self._df_v.index)):
                     for c, col in enumerate(cols_v):
                         val = self._df_v.iloc[r_idx][col]
-                        self.table_ventas.setItem(r_idx, c, QTableWidgetItem(str(val)))
+                        item = QTableWidgetItem(str(val))
+                        item.setTextAlignment(Qt.AlignCenter)
+                        self.table_ventas.setItem(r_idx, c, item)
                 self.table_ventas.resizeColumnsToContents()
+                # Ajustar el ancho para que se vea mejor
+                self.table_ventas.horizontalHeader().setStretchLastSection(True)
             else:
                 self.table_ventas.setRowCount(0)
                 self.table_ventas.setColumnCount(0)

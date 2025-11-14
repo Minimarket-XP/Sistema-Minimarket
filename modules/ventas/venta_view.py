@@ -237,6 +237,35 @@ class VentasFrame(QWidget):
         btn_deshacer = QPushButton("Deshacer Descuento")
         btn_deshacer.clicked.connect(self.deshacer_descuento)
         discount_layout.addWidget(btn_deshacer)
+        btn_descuento.setStyleSheet("""
+            QPushButton {
+                background-color: #ff9800;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                font-size: 13px;
+                font-weight: bold;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #e68900;
+            }
+        """)
+
+        btn_deshacer.setStyleSheet("""
+            QPushButton {
+                background-color: #6c757d;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                font-size: 13px;
+                font-weight: bold;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #5a6268;
+            }
+        """)
 
         right_layout.addLayout(discount_layout)
 
