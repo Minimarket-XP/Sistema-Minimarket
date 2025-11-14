@@ -8,11 +8,23 @@ Sistema de gestión completo para minimarket que incluye manejo de inventario, v
 
 ## Estado del Proyecto
 
-**Sprint 1 - PROCESO** - FUNCIONALIDAD MÍNIMA VIABLE
+**Sprint 1** - FUNCIONALIDAD MÍNIMA VIABLE
 - CRUD completo de productos
 - Manejo de imágenes
 - Sistema de categorías
 - Interfaz moderna con PyQt5
+
+**Sprint 2** - FUNCIONALIDADES COMPLEMENTARIAS
+- Gestión de clientes y empleados
+- Sistema de ventas con descuentos y devoluciones
+- Reportes de ventas en PDF y Excel
+- Notificaciones de stock bajo
+- Roles y permisos de usuario
+
+**Sprint 3** - OPTIMIZACIÓN Y PERFORMANCE
+- Mejoras de rendimiento
+- Optimización de consultas a la base de datos
+- Refactorización de código
 
 ## Tecnologías
 
@@ -21,6 +33,10 @@ Sistema de gestión completo para minimarket que incluye manejo de inventario, v
 - **SQLite** - Base de datos integrada
 - **pandas** - Manejo de datos
 - **Pillow (PIL)** - Procesamiento de imágenes
+- **ReportLab** - Generación de reportes PDF
+- **OpenPyXL** - Exportación a Excel
+- **requests** - Consumo de APIs externas
+- **setuptools, wheel, PyInstaller** - Empaquetado y distribución
 
 ## Instalación
 
@@ -61,26 +77,41 @@ Sistema-Minimarket-wa/
 ├── requirements.txt           # Lista dependencias python
 ├── S_Minimarket_Fixed.espec   # Configuración PyInstaller
 ├── temp_minimarket.jpg        # Imagen temporal
-├── models/
-│   ├── base_model.py          # CRUD base SQLite
-│   ├── empleado.py            # Lógica empleados
-│   ├── helpers.py             # Funciones Auxiliares
-│   ├── producto.py            # Lógica productos
-│   └── venta.py               # Lógica ventas
-├── views/
-│   ├── dashboard.py           # Interfaz principal
-│   ├── empleados.py           # Gestión empleados
-│   ├── inventario.py          # Gestión inventario
-│   ├── login.py               # Pantalla login
-│   ├── settings.py            # Configuraciones globales
-│   ├── ventas.py              # Proceso ventas
-│   └── components/
-│       └── forms.py           # Formularios reutilizables
-├── db/
-│   ├── database.py            # Conexión SQLite
-│   ├── minimarket.db          # Base datos principal
-│   └── imagenes/              # Imágenes productos/logos
 ├── .venv/                     # Entorno virtual Python (286 MB)
+├── core/
+│   ├── base_model.py               # Modelos base
+│   ├── config.py                   # Configuración global
+│   └── database.py                 # Conexión base de datos
+├── db/
+│   ├── imagenes/                   # Imágenes de la aplicación
+│   └── minimarket.db               # Base de datos SQLite
+├── modules/
+│   ├── clientes
+│   │   ├── cliente_model.py        # Lógica clientes
+│   │   └── cliente_view.py         # Interfaz clientes
+│   ├── empleados
+│   │   ├── empleado_model.py       # Lógica empleados
+│   │   └── empleado_view.py        # Interfaz empleados
+│   ├── productos
+│   │   ├── alertas.py              # Lógica alertas productos
+│   │   ├── inventario_view.py      # Interfaz inventario
+│   │   └── producto_model.py       # Lógica productos
+│   ├── reportes
+│   │   ├── exportador.py           # Lógica exportar reportes
+│   │   └── reporte_view.py         # Interfaz reportes
+│   └── ventas
+│       ├── comprobantes_api.py     # Lógica comprobantes
+│       ├── descuentos.py           # Lógica descuentos
+│       ├── devoluciones_view.py    # Interfaz devoluciones
+│       ├── venta_model.py          # Lógica ventas
+│       └── venta_view.py           # Interfaz ventas
+├── shared/
+│   ├── components
+│       └── forms.py                # Formularios reutilizables
+│   ├── dashboard.py                # Pantalla principal
+│   ├── helpers.py                  # Funciones auxiliares
+│   └── login.py                    # Módulo login
+└── .env                        # Variables entorno (no subir a git)
 ```
 
 ## Funcionalidades
@@ -97,9 +128,21 @@ Sistema-Minimarket-wa/
 | **HUO002**        | Como almacenero, quiero actualizar la información de un producto (precio, stock, estado, descripción) para mantener el inventario al día | **5** |
 | **HUI003**        | Como cajero, quiero aplicar descuentos a productos o al total de la venta para poder ofrecer promociones a los clientes.         | **5** |  
 
-### Próximos Sprints
-- [ ] **Sprint 2**: FUNCIONALIDADES COMPLEMENTARIAS
-- [ ] **Sprint 3**: OPTIMIZACIÓN Y PERFORMANCE
+### Sprint 2 - FUNCIONALIDADES COMPLEMENTARIAS
+| Cod. Historia | Descripción de la Historia                                                                                                | Puntos |
+|---------------|---------------------------------------------------------------------------------------------------------------------------|--------|
+| **HUI004**    | Como cajero, quiero realizar devoluciones de productos para gestionar los reembolsos de manera adecuada.                  | **8**  |
+| **HUI006**    | Como cajero, quiero registrar devoluciones de productos para gestionar correctamente las transacciones con los clientes.  | **5**  |
+| **HUO004**    | Como almacenero, quiero recibir notificaciones de stock bajo para poder reabastecer los productos antes de que se agoten. | **5**  |
+| **HUI008**    | Como administrador, quiero poder generar reportes de ventas diarias, semanales y mensuales para analizar el rendimiento del negocio.  | **5**  |
+| **HUO006**    | Como administrador, quiero asignar roles a los usuarios para definir sus permisos y las acciones que pueden realizar.  | **3**  |
+| **HUO007**    | Como administrador, quiero modificar la información de los usuarios para mantener actualizada la base de datos del personal.    | **3**  |
+| **HUO009**    | Como administrador, quiero poder ver qué productos son los más vendidos para optimizar la gestión de inventario y compras.  | **5**  |
+| **HUO010**    | Como administrador, quiero poder generar un reporte de ganancias y pérdidas para evaluar la salud financiera del minimarket.    | **5**  |
+
+### Sprint 3 - OPTIMIZACIÓN Y PERFORMANCE
+
+----------------------------------------------------------
 
 ## 👨‍💻 Equipo de Desarrollo 
 
@@ -121,13 +164,14 @@ Sistema-Minimarket-wa/
 El sistema está disponible como **ejecutable independiente** que no requiere Python instalado:
 
 #### **Características:**
-- 🏪 **Sistema completo** con todas las funcionalidades
-- 🔐 **Login integrado** (Usuario: `admin`, Contraseña: `admin`)
-- 📦 **Gestión de inventarios** con sistema P0001
-- 💰 **Punto de venta (POS)** completo
-- 📊 **Reportes automáticos** (PDF y Excel)
-- 🗄️ **Base de datos SQLite** incluida
-- 🖼️ **Interfaz PyQt5** profesional
+- **Sistema completo** con todas las funcionalidades
+- **Login integrado** (Usuario: `admin`, Contraseña: `admin`)
+- **Gestión de inventarios** con sistema P0001
+- **Gestión de ventas** con facturación y recibos
+- **Punto de venta (POS)** completo
+- **Reportes automáticos** (PDF y Excel)
+- **Base de datos SQLite** incluida
+- **Interfaz PyQt5** profesional
 
 #### **Dependencias Incluidas:**
 - Python 3.12
@@ -136,6 +180,11 @@ El sistema está disponible como **ejecutable independiente** que no requiere Py
 - Pandas + OpenPyXL (Reportes Excel)
 - ReportLab (PDFs)
 - PIL/Pillow (Imágenes)
+- requests (API comprobantes)
+- setuptools
+- wheel
+- PyInstaller
+- matplotlib
 - Todas las librerías del sistema
 
 #### **Scripts de Compilación:**
