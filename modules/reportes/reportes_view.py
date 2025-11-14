@@ -10,6 +10,555 @@ vendidos para optimizar la gestión de inventario y compras.
 HUO010 - Reporte de ganancias y pérdidas	
 Como administrador, quiero poder generar un reporte de ganancias 
 y pérdidas para evaluar la salud financiera del minimarket.
-		
-		
 """
+
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+                             QPushButton, QTabWidget, QDateEdit, QComboBox, QFileDialog, QMessageBox,
+                             QTableWidget, QTableWidgetItem, QSizePolicy)
+from PyQt5.QtCore import Qt, QDate
+from modules.ventas.venta_model import VentaModel
+from modules.reportes.exportador import exportar_pdf, exportar_excel
+import pandas as pd
+from core.database import db
+
+class ReportesFrame(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.venta_model = VentaModel()
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+        titulo = QLabel("Reportes")
+        titulo.setAlignment(Qt.AlignCenter)
+        layout.addWidget(titulo)
+
+        # Filtros de fecha y granularidad
+        filtros_layout = QHBoxLayout()
+        self.fecha_desde = QDateEdit(QDate.currentDate().addDays(-7))
+        self.fecha_hasta = QDateEdit(QDate.currentDate())
+        self.fecha_desde.setCalendarPopup(True)
+        self.fecha_hasta.setCalendarPopup(True)
+        # Set minimum allowed date to first sale date if available
+        try:
+            min_fecha = self._get_min_fecha_venta()
+            if min_fecha:
+                qmin = QDate(min_fecha.year, min_fecha.month, min_fecha.day)
+                self.fecha_desde.setMinimumDate(qmin)
+                self.fecha_hasta.setMinimumDate(qmin)
+                # If current default desde is before min, move it
+                if self.fecha_desde.date() < qmin:
+                    self.fecha_desde.setDate(qmin)
+        except Exception:
+            pass
+        filtros_layout.addWidget(QLabel("Desde:"))
+        filtros_layout.addWidget(self.fecha_desde)
+        filtros_layout.addWidget(QLabel("Hasta:"))
+        filtros_layout.addWidget(self.fecha_hasta)
+
+        self.lbl_periodo = QLabel("Periodo:")
+        filtros_layout.addWidget(self.lbl_periodo)
+        self.combo_periodo = QComboBox()
+        self.combo_periodo.addItems(["Diario", "Semanal", "Mensual"])
+        filtros_layout.addWidget(self.combo_periodo)
+
+        btn_refresh = QPushButton("Actualizar")
+        btn_refresh.clicked.connect(self.actualizar)
+        filtros_layout.addWidget(btn_refresh)
+        layout.addLayout(filtros_layout)
+
+        self.tabs = QTabWidget()
+        # Tab 1: Ventas por periodo
+        self.tab_ventas = QWidget()
+        v1 = QVBoxLayout(self.tab_ventas)
+        # Try to import matplotlib and prepare canvases; if missing, show a helpful label
+        try:
+            from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+            from matplotlib.figure import Figure
+            self._has_mpl = True
+        except Exception:
+            self._has_mpl = False
+
+        if self._has_mpl:
+            self.canvas1 = FigureCanvas(Figure(figsize=(8, 3)))
+            # allow canvas to expand and resize
+            self.canvas1.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+            v1.addWidget(self.canvas1)
+            self.placeholder1 = None
+        else:
+            self.canvas1 = None
+            self.placeholder1 = QLabel("Matplotlib no está instalado. Instala: pip install matplotlib")
+            self.placeholder1.setStyleSheet('color: red;')
+            v1.addWidget(self.placeholder1)
+        self.tabs.addTab(self.tab_ventas, "Ventas por periodo")
+        # Tabla debajo del gráfico (ventas)
+        self.table_ventas = QTableWidget()
+        v1.addWidget(self.table_ventas)
+
+        # Tab 2: Productos más vendidos
+        self.tab_prod = QWidget()
+        v2 = QVBoxLayout(self.tab_prod)
+        if self._has_mpl:
+            # make canvas wider and slightly taller so bars have room
+            self.canvas2 = FigureCanvas(Figure(figsize=(10, 4)))
+            self.canvas2.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+            v2.addWidget(self.canvas2)
+            self.placeholder2 = None
+        else:
+            self.canvas2 = None
+            self.placeholder2 = QLabel("Matplotlib no está instalado. Instala: pip install matplotlib")
+            self.placeholder2.setStyleSheet('color: red;')
+            v2.addWidget(self.placeholder2)
+        self.tabs.addTab(self.tab_prod, "Productos Top 10")
+        # Tabla debajo del gráfico (productos)
+        self.table_prod = QTableWidget()
+        v2.addWidget(self.table_prod)
+
+        # Tab 3: Ganancias y pérdidas
+        self.tab_gan = QWidget()
+        v3 = QVBoxLayout(self.tab_gan)
+        if self._has_mpl:
+            self.canvas3 = FigureCanvas(Figure(figsize=(8, 3)))
+            self.canvas3.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+            v3.addWidget(self.canvas3)
+            self.placeholder3 = None
+        else:
+            self.canvas3 = None
+            self.placeholder3 = QLabel("Matplotlib no está instalado. Instala: pip install matplotlib")
+            self.placeholder3.setStyleSheet('color: red;')
+            v3.addWidget(self.placeholder3)
+        self.tabs.addTab(self.tab_gan, "Ganancias/Pérdidas")
+        # Tabla debajo del gráfico (resumen)
+        self.table_gan = QTableWidget()
+        v3.addWidget(self.table_gan)
+
+        layout.addWidget(self.tabs)
+
+        # show/hide periodo controls depending on active tab
+        self.tabs.currentChanged.connect(self._on_tab_changed)
+        # set initial visibility (only show for tab index 0)
+        try:
+            self._on_tab_changed(self.tabs.currentIndex())
+        except Exception:
+            pass
+
+        # Botones exportar (actúan sobre la pestaña activa)
+        btn_export_pdf = QPushButton("Exportar PDF")
+        btn_export_pdf.clicked.connect(lambda: self.exportar(forma='pdf'))
+        btn_export_xlsx = QPushButton("Exportar Excel")
+        btn_export_xlsx.clicked.connect(lambda: self.exportar(forma='xlsx'))
+        h = QHBoxLayout()
+        h.addWidget(btn_export_pdf)
+        h.addWidget(btn_export_xlsx)
+        layout.addLayout(h)
+
+        # Inicializar gráficos
+        self.actualizar()
+
+    def _on_tab_changed(self, index: int):
+        """Hide periodo controls for tabs other than 'Ventas por periodo' (index 0)."""
+        try:
+            if index == 0:
+                self.lbl_periodo.show()
+                self.combo_periodo.show()
+            else:
+                self.lbl_periodo.hide()
+                self.combo_periodo.hide()
+        except Exception:
+            # ignore if controls not ready
+            pass
+
+    def _rango_fechas(self):
+        d = self.fecha_desde.date().toPyDate()
+        h = self.fecha_hasta.date().toPyDate()
+        return d, h
+
+    def _get_min_fecha_venta(self):
+        """Return the date of the earliest sale as a datetime.date or None."""
+        try:
+            conn = db.get_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT MIN(DATE(fecha)) FROM ventas")
+            row = cur.fetchone()
+            conn.close()
+            if row and row[0]:
+                from datetime import datetime
+                return datetime.strptime(row[0], '%Y-%m-%d').date()
+        except Exception:
+            return None
+
+    def actualizar(self):
+        fecha_desde, fecha_hasta = self._rango_fechas()
+        # use ISO date strings for SQLite queries
+        fecha_desde_str = fecha_desde.strftime('%Y-%m-%d')
+        fecha_hasta_str = fecha_hasta.strftime('%Y-%m-%d')
+        periodo = self.combo_periodo.currentText()
+
+        # Tab 1: Ventas por periodo
+        try:
+            conn = db.get_connection()
+            df_v = pd.read_sql_query(
+                "SELECT fecha, total, descuento FROM ventas WHERE DATE(fecha) BETWEEN ? AND ? ORDER BY fecha ASC",
+                conn, params=[fecha_desde_str, fecha_hasta_str], parse_dates=['fecha']
+            )
+            conn.close()
+        except Exception:
+            df_v = pd.DataFrame(columns=['fecha', 'total', 'descuento'])
+
+        if not df_v.empty:
+            df_v['fecha'] = pd.to_datetime(df_v['fecha'])
+            df_v.set_index('fecha', inplace=True)
+            # ensure numeric columns are usable (fill NaN/None)
+            df_v['total'] = df_v['total'].fillna(0).astype(float)
+            df_v['descuento'] = df_v['descuento'].fillna(0).astype(float)
+            # total stored is net after discount; compute gross = total + descuento
+            df_v['gross'] = df_v['total'] + df_v['descuento']
+            freq = {'Diario': 'D', 'Semanal': 'W', 'Mensual': 'M'}.get(periodo, 'D')
+            series = df_v['total'].resample(freq).sum()
+        else:
+            series = pd.Series([], dtype=float)
+
+        # Draw chart if matplotlib available
+        if self._has_mpl and self.canvas1 is not None:
+            # Clear entire figure to avoid overlapping axes
+            try:
+                self.canvas1.figure.clear()
+                ax1 = self.canvas1.figure.add_subplot(111)
+            except Exception:
+                ax1 = self.canvas1.figure.subplots()
+
+            if not series.empty:
+                # apply date locators/formatters according to granularity
+                try:
+                    import matplotlib.dates as mdates
+                    has_mdates = True
+                except Exception:
+                    has_mdates = False
+
+                if has_mdates:
+                    ax1.xaxis_date()
+                    # choose locator/formatter but adapt interval to avoid too many ticks
+                    try:
+                        # number of aggregated points
+                        n_points = len(series.index)
+                        if periodo == 'Diario':
+                            interval = 1
+                            if n_points > 10:
+                                import math
+                                interval = max(1, math.ceil(n_points / 10))
+                            locator = mdates.DayLocator(interval=interval)
+                            fmt = mdates.DateFormatter('%d-%b')
+                        elif periodo == 'Semanal':
+                            interval = 1
+                            if n_points > 10:
+                                import math
+                                interval = max(1, math.ceil(n_points / 10))
+                            locator = mdates.WeekdayLocator(byweekday=mdates.MO, interval=interval)
+                            fmt = mdates.DateFormatter('%d-%b')
+                        else:  # Mensual
+                            interval = 1
+                            if n_points > 10:
+                                import math
+                                interval = max(1, math.ceil(n_points / 10))
+                            locator = mdates.MonthLocator(interval=interval)
+                            fmt = mdates.DateFormatter('%b %Y')
+                        ax1.xaxis.set_major_locator(locator)
+                        ax1.xaxis.set_major_formatter(fmt)
+                    except Exception:
+                        pass
+
+                # Plot using the aggregated series that is used for the table
+                series.plot(ax=ax1, marker='o')
+                ax1.set_title(f"Ventas ({periodo})")
+                ax1.set_ylabel('Total neto')
+                ax1.grid(True, linestyle='--', alpha=0.4)
+                for lbl in ax1.get_xticklabels():
+                    lbl.set_rotation(45)
+                    lbl.set_ha('right')
+                # Set x-axis limits based on the selected date range so the
+                # left/right extremes match the Desde/Hasta controls.
+                try:
+                    from datetime import datetime, timedelta
+                    # fecha_desde and fecha_hasta are date objects from _rango_fechas
+                    start_dt = datetime(fecha_desde.year, fecha_desde.month, fecha_desde.day, 0, 0, 0)
+                    # include the full 'hasta' day by setting time to 23:59:59, add small padding day
+                    end_dt = datetime(fecha_hasta.year, fecha_hasta.month, fecha_hasta.day, 23, 59, 59) + timedelta(days=0)
+                    # add a tiny padding (1% of range) so last point isn't on the border
+                    try:
+                        total_seconds = (end_dt - start_dt).total_seconds()
+                        pad = timedelta(seconds=max(1, total_seconds * 0.01))
+                        end_dt = end_dt + pad
+                    except Exception:
+                        pass
+                    ax1.set_xlim(start_dt, end_dt)
+                except Exception:
+                    # if anything goes wrong, skip setting limits
+                    pass
+            else:
+                ax1.text(0.5, 0.5, 'No hay ventas en el rango seleccionado', ha='center')
+
+            try:
+                self.canvas1.figure.tight_layout()
+            except Exception:
+                pass
+            self.canvas1.draw()
+        else:
+            # Update placeholder text if present
+            if getattr(self, 'placeholder1', None) is not None:
+                self.placeholder1.setText("Matplotlib no está instalado. Instala: pip install matplotlib")
+
+        # Tab 2: Productos más vendidos (Top 10)
+        try:
+            conn = db.get_connection()
+            query = '''
+                SELECT p.nombre as producto_nombre, SUM(dv.cantidad) as total_vendido, SUM(dv.subtotal) as ingresos_totales
+                FROM detalle_ventas dv
+                JOIN ventas v ON dv.venta_id = v.id
+                JOIN productos p ON dv.producto_id = p.id
+                WHERE DATE(v.fecha) BETWEEN ? AND ?
+                GROUP BY dv.producto_id, p.nombre
+                ORDER BY total_vendido DESC
+                LIMIT 10
+            '''
+            df_p = pd.read_sql_query(query, conn, params=[fecha_desde_str, fecha_hasta_str])
+            conn.close()
+        except Exception:
+            df_p = pd.DataFrame()
+
+        if self._has_mpl and self.canvas2 is not None:
+            try:
+                self.canvas2.figure.clear()
+                ax2 = self.canvas2.figure.add_subplot(111)
+            except Exception:
+                ax2 = self.canvas2.figure.subplots()
+
+            if not df_p.empty:
+                names = df_p['producto_nombre'].astype(str).tolist()
+                values = df_p['total_vendido'].tolist()
+                positions = list(range(len(names)))
+                # draw bars
+                ax2.bar(positions, values, color='#3498db', width=0.6)
+                ax2.set_xticks(positions)
+                # reduce font size for long product names and rotate for readability
+                ax2.set_xticklabels(names, rotation=45, ha='right', fontsize=8)
+                ax2.tick_params(axis='x', which='major', labelsize=8)
+                ax2.set_title('Top 10 Productos más vendidos')
+                ax2.grid(axis='y', linestyle='--', alpha=0.4)
+                # leave extra bottom margin so rotated labels don't overlap
+                try:
+                    self.canvas2.figure.subplots_adjust(bottom=0.30)
+                except Exception:
+                    pass
+            else:
+                ax2.text(0.5, 0.5, 'No hay datos', ha='center')
+
+            try:
+                self.canvas2.figure.tight_layout()
+            except Exception:
+                pass
+            self.canvas2.draw()
+        else:
+            if getattr(self, 'placeholder2', None) is not None:
+                self.placeholder2.setText("Matplotlib no está instalado. Instala: pip install matplotlib")
+        # Poblar tabla de productos
+        try:
+            cols_p = list(df_p.columns)
+            self.table_prod.setColumnCount(len(cols_p))
+            self.table_prod.setRowCount(len(df_p.index))
+            self.table_prod.setHorizontalHeaderLabels(cols_p)
+            for r_idx in range(len(df_p.index)):
+                for c, col in enumerate(cols_p):
+                    val = df_p.iloc[r_idx][col]
+                    self.table_prod.setItem(r_idx, c, QTableWidgetItem(str(val)))
+            self.table_prod.resizeColumnsToContents()
+        except Exception:
+            # limpiar tabla
+            self.table_prod.setRowCount(0)
+            self.table_prod.setColumnCount(0)
+        self.canvas2.figure.tight_layout()
+        self.canvas2.draw()
+
+        # Tab 3: Ganancias y pérdidas (resumen simple)
+        if self._has_mpl and self.canvas3 is not None:
+            try:
+                self.canvas3.figure.clear()
+                ax3 = self.canvas3.figure.add_subplot(111)
+            except Exception:
+                ax3 = self.canvas3.figure.subplots()
+
+            if not df_v.empty:
+                total_net = df_v['total'].sum()
+                total_gross = df_v['gross'].sum()
+                total_discount = df_v['descuento'].sum()
+                labels = ['Bruto', 'Descuentos', 'Neto']
+                values = [total_gross, total_discount, total_net]
+                ax3.bar(labels, values, color=['#2ecc71', '#e74c3c', '#3498db'])
+                ax3.set_title('Resumen de ingresos y descuentos')
+                ax3.grid(axis='y', linestyle='--', alpha=0.4)
+
+                # Poblar tabla resumen
+                try:
+                    df_summary = pd.DataFrame([{'Bruto': total_gross, 'Descuentos': total_discount, 'Neto': total_net}])
+                    cols_s = list(df_summary.columns)
+                    self.table_gan.setColumnCount(len(cols_s))
+                    self.table_gan.setRowCount(len(df_summary.index))
+                    self.table_gan.setHorizontalHeaderLabels(cols_s)
+                    for r_idx in range(len(df_summary.index)):
+                        for c, col in enumerate(cols_s):
+                            val = df_summary.iloc[r_idx][col]
+                            self.table_gan.setItem(r_idx, c, QTableWidgetItem(str(val)))
+                    self.table_gan.resizeColumnsToContents()
+                except Exception:
+                    self.table_gan.setRowCount(0)
+                    self.table_gan.setColumnCount(0)
+            else:
+                ax3.text(0.5, 0.5, 'No hay datos para Ganancias/Pérdidas en el rango', ha='center')
+                self.table_gan.setRowCount(0)
+                self.table_gan.setColumnCount(0)
+
+            try:
+                self.canvas3.figure.tight_layout()
+            except Exception:
+                pass
+            self.canvas3.draw()
+        else:
+            if getattr(self, 'placeholder3', None) is not None:
+                self.placeholder3.setText("Matplotlib no está instalado. Instala: pip install matplotlib")
+
+        # Store dataframes for export (use non-indexed df for exports)
+        try:
+            self._df_v = df_v.reset_index()
+        except Exception:
+            self._df_v = pd.DataFrame()
+        self._df_p = df_p if not df_p.empty else pd.DataFrame()
+
+        # Poblar tabla de ventas (df_v may be empty)
+        try:
+            if not self._df_v.empty:
+                cols_v = list(self._df_v.columns)
+                # Map internal column names to display titles
+                title_map = {'total': 'precio', 'gross': 'total'}
+                display_cols = [title_map.get(c, c) for c in cols_v]
+                self.table_ventas.setColumnCount(len(cols_v))
+                self.table_ventas.setRowCount(len(self._df_v.index))
+                self.table_ventas.setHorizontalHeaderLabels(display_cols)
+                for r_idx in range(len(self._df_v.index)):
+                    for c, col in enumerate(cols_v):
+                        val = self._df_v.iloc[r_idx][col]
+                        self.table_ventas.setItem(r_idx, c, QTableWidgetItem(str(val)))
+                self.table_ventas.resizeColumnsToContents()
+            else:
+                self.table_ventas.setRowCount(0)
+                self.table_ventas.setColumnCount(0)
+        except Exception:
+            self.table_ventas.setRowCount(0)
+            self.table_ventas.setColumnCount(0)
+
+    def exportar(self, forma='pdf'):
+        # Export the active tab data
+        idx = self.tabs.currentIndex()
+        if idx == 0:
+            df = self._df_v if hasattr(self, '_df_v') else pd.DataFrame()
+            titulo = 'Ventas por periodo'
+            default_name = 'ventas_periodo'
+        elif idx == 1:
+            df = self._df_p if hasattr(self, '_df_p') else pd.DataFrame()
+            titulo = 'Productos Top 10'
+            default_name = 'productos_top10'
+        else:
+            # Build a small dataframe summary for ganancias
+            if not hasattr(self, '_df_v') or self._df_v.empty:
+                df = pd.DataFrame()
+            else:
+                total_net = self._df_v['total'].sum()
+                total_gross = (self._df_v['total'] + self._df_v['descuento']).sum()
+                total_discount = self._df_v['descuento'].sum()
+                df = pd.DataFrame([{'Bruto': total_gross, 'Descuentos': total_discount, 'Neto': total_net}])
+            titulo = 'Ganancias y Pérdidas'
+            default_name = 'ganancias_perdidas'
+
+        if df.empty:
+            QMessageBox.information(self, 'Exportar', 'No hay datos para exportar')
+            return
+
+        # Ask for filename and attempt export; catch ImportError and show instructions
+        try:
+            # build descriptive filename including period and date range
+            periodo = self.combo_periodo.currentText()
+            fecha_desde, fecha_hasta = self._rango_fechas()
+            fecha_desde_str = fecha_desde.strftime('%Y-%m-%d')
+            fecha_hasta_str = fecha_hasta.strftime('%Y-%m-%d')
+            if idx == 0:
+                suggested_base = f"{titulo} ({periodo}) de {fecha_desde_str} a {fecha_hasta_str}"
+            else:
+                suggested_base = f"{titulo} de {fecha_desde_str} a {fecha_hasta_str}"
+            # capture chart image from current canvas (if available)
+            chart_bytes = None
+            try:
+                import io
+                if idx == 0 and getattr(self, 'canvas1', None) is not None:
+                    buf = io.BytesIO()
+                    self.canvas1.figure.savefig(buf, format='png', bbox_inches='tight', dpi=150)
+                    chart_bytes = buf.getvalue()
+                elif idx == 1 and getattr(self, 'canvas2', None) is not None:
+                    buf = io.BytesIO()
+                    # temporarily reduce xtick label fontsize so product names fit better in export
+                    try:
+                        fig = self.canvas2.figure
+                        if fig.axes:
+                            ax = fig.axes[0]
+                            orig_sizes = [lbl.get_fontsize() for lbl in ax.get_xticklabels()]
+                            for lbl in ax.get_xticklabels():
+                                lbl.set_fontsize(max(6, min(lbl.get_fontsize(), 8)))
+                    except Exception:
+                        orig_sizes = None
+                    try:
+                        self.canvas2.figure.savefig(buf, format='png', bbox_inches='tight', dpi=150)
+                        chart_bytes = buf.getvalue()
+                    finally:
+                        # restore original sizes
+                        try:
+                            if orig_sizes is not None and fig.axes:
+                                ax = fig.axes[0]
+                                for lbl, s in zip(ax.get_xticklabels(), orig_sizes):
+                                    lbl.set_fontsize(s)
+                        except Exception:
+                            pass
+                elif idx == 2 and getattr(self, 'canvas3', None) is not None:
+                    buf = io.BytesIO()
+                    self.canvas3.figure.savefig(buf, format='png', bbox_inches='tight', dpi=150)
+                    chart_bytes = buf.getvalue()
+            except Exception:
+                chart_bytes = None
+
+            if forma == 'pdf':
+                path, _ = QFileDialog.getSaveFileName(self, 'Guardar PDF', f'{suggested_base}.pdf', 'PDF Files (*.pdf)')
+                if not path:
+                    return
+                # Apply display title mapping for ventas tab so exported headers match UI
+                df_export = df.copy()
+                if idx == 0:
+                    df_export = df_export.rename(columns={'total': 'precio', 'gross': 'total'})
+                exportar_pdf(df_export, path, titulo, chart_bytes=chart_bytes)
+                QMessageBox.information(self, 'Exportar', f'PDF guardado en: {path}')
+            else:
+                path, _ = QFileDialog.getSaveFileName(self, 'Guardar Excel', f'{suggested_base}.xlsx', 'Excel Files (*.xlsx)')
+                if not path:
+                    return
+                df_export = df.copy()
+                if idx == 0:
+                    df_export = df_export.rename(columns={'total': 'precio', 'gross': 'total'})
+                exportar_excel(df_export, path, sheet_name=default_name, chart_bytes=chart_bytes)
+                QMessageBox.information(self, 'Exportar', f'Excel guardado en: {path}')
+        except ImportError as e:
+            # Show a user-friendly message explaining which package is missing
+            msg = str(e)
+            if 'reportlab' in msg:
+                extra = "Para exportar a PDF instala: pip install reportlab"
+            elif 'openpyxl' in msg:
+                extra = "Para exportar a Excel instala: pip install openpyxl"
+            else:
+                extra = "Instala las dependencias necesarias: pip install reportlab openpyxl"
+            QMessageBox.critical(self, 'Exportar - Dependencia faltante', f"Error exportando: {msg}\n\n{extra}")
+        except Exception as e:
+            QMessageBox.critical(self, 'Exportar', f'Error exportando: {str(e)}')

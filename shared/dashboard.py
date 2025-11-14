@@ -211,18 +211,29 @@ class Dashboard(QMainWindow):
     
     def mostrar_reportes(self):
         self.limpiar_contenido()
+<<<<<<< HEAD
 <<<<<<< HEAD:views/dashboard.py
         try:
             from views.reportes_view import ReportesFrame
+=======
+        try:
+            from modules.reportes.reportes_view import ReportesFrame
+>>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
             reportes = ReportesFrame(self)
             self.main_content.addWidget(reportes)
             self.main_content.setCurrentWidget(reportes)
         except Exception as e:
+<<<<<<< HEAD
             self.mostrar_error("📊 Reportes", f"Error al cargar módulo: {str(e)}")
 =======
         self.mostrar_error("Reportes", "Próximamente en Sprint 2")
 >>>>>>> 51bcbc5 (feat: Preparación de la estructura para el Sprint 2 XP - archivos base):shared/dashboard.py
     
+=======
+            print("ERROR aquí", e)
+            self.mostrar_error("Reportes", str(e))
+
+>>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
     def mostrar_empleados(self):
         self.limpiar_contenido()
         try:

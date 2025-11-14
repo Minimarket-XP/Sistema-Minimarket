@@ -16,7 +16,12 @@ class VentaModel:
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")[:-3]  # Sin microsegundos completos
         return f"V{timestamp}"
 
+<<<<<<< HEAD
     def procesar_venta(self, carrito: list, empleado="Admin", metodo_pago="efectivo", descuento_total: float = 0.0, descuento_pct: float = 0.0, descuento_tipo: str = ""):
+=======
+    def procesar_venta(self, carrito: list, empleado="Admin", metodo_pago="efectivo",
+        descuento_total: float = 0.0, descuento_pct: float = 0.0, descuento_tipo: str = ""):
+>>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
         """
         Args:
             carrito (list): Lista de productos en el carrito
@@ -32,18 +37,32 @@ class VentaModel:
             fecha_hora = datetime.now()
             total = sum(item['total'] for item in carrito)
             descuento_total = float(descuento_total or 0.0)
+<<<<<<< HEAD
             # Asegurar que el total no sea negativo luego de aplicar descuento
+=======
+            # El total no debe ser negativo luego de aplicar el descuento
+>>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
             total_con_descuento = max(0.0, total - descuento_total)
 
             conexion = db.get_connection()
             cursor = conexion.cursor()
 
+<<<<<<< HEAD
             # Insertar venta principal (usando estructura existente)
             # Insertar venta principal incluyendo campos de descuento (monto, pct y tipo)
             cursor.execute('''
                 INSERT INTO ventas (id, fecha, empleado_id, total, descuento, descuento_pct, descuento_tipo, metodo_pago, estado)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (venta_id, fecha_hora, 1, total_con_descuento, descuento_total, float(descuento_pct or 0.0), descuento_tipo or '', metodo_pago, 'completada'))  # empleado_id = 1 por defecto
+=======
+            # Insertar venta principal incluyendo los campos de descuento
+            cursor.execute('''
+                INSERT INTO ventas (id, fecha, empleado_id, total, descuento,
+                                    descuento_pct, descuento_tipo, metodo_pago, estado)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (venta_id, fecha_hora, 1, total_con_descuento, descuento_total,
+                  float(descuento_pct or 0.0), descuento_tipo or "", metodo_pago, 'completada'))  # empleado_id = 1 por defecto
+>>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
 
             # Insertar detalles de venta y actualizar stock
             producto_model = ProductoModel()
@@ -56,7 +75,11 @@ class VentaModel:
                     (venta_id, producto_id, cantidad, precio_unitario, subtotal, descuento)
                     VALUES (?, ?, ?, ?, ?, ?)
                 ''', (venta_id, item['id'], item['cantidad'],
+<<<<<<< HEAD
                       item['precio'], item['total'], item.get('descuento')))
+=======
+                      item['precio'], item['total'], item['descuento']))
+>>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
 
                 # Actualizar stock del producto
                 producto_actual = producto_model.obtenerPorId(item['id'])
