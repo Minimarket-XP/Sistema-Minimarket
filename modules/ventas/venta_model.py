@@ -2,7 +2,6 @@
 
 import pandas as pd
 from core.database import db
-from modules.productos.producto_model import ProductoModel
 from datetime import datetime
 
 class VentaModel:
@@ -19,10 +18,18 @@ class VentaModel:
     def procesar_venta(self, carrito: list, empleado="Admin", metodo_pago="efectivo",
         descuento_total: float = 0.0, descuento_pct: float = 0.0, descuento_tipo: str = ""):
         """
+        Procesa una venta completa. Los triggers de la BD se encargan de:
+        - Validar stock disponible
+        - Actualizar stock automáticamente
+        - Validar precios y cantidades positivas
+
         Args:
             carrito (list): Lista de productos en el carrito
             empleado (str): Nombre del empleado que procesa la venta
             metodo_pago (str): Método de pago utilizado
+            descuento_total (float): Descuento aplicado
+            descuento_pct (float): Porcentaje de descuento
+            descuento_tipo (str): Tipo de descuento aplicado
 
         Returns:
             tuple: (success, venta_id, mensaje)
@@ -33,50 +40,51 @@ class VentaModel:
             fecha_hora = datetime.now()
             total = sum(item['total'] for item in carrito)
             descuento_total = float(descuento_total or 0.0)
-            # El total no debe ser negativo luego de aplicar el descuento
             total_con_descuento = max(0.0, total - descuento_total)
 
             conexion = db.get_connection()
             cursor = conexion.cursor()
 
-            # Insertar venta principal incluyendo los campos de descuento
+            # Insertar venta principal
             cursor.execute('''
                 INSERT INTO ventas (id, fecha, empleado_id, total, descuento,
                                     descuento_pct, descuento_tipo, metodo_pago, estado)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (venta_id, fecha_hora, 1, total_con_descuento, descuento_total,
-                  float(descuento_pct or 0.0), descuento_tipo or "", metodo_pago, 'completada'))  # empleado_id = 1 por defecto
+                  float(descuento_pct or 0.0), descuento_tipo or "", metodo_pago, 'completada'))
 
-            # Insertar detalles de venta y actualizar stock
-            producto_model = ProductoModel()
-
+            # Insertar detalles de venta
+            # Los triggers se encargan de:
+            # - Validar que hay stock suficiente
+            # - Actualizar el stock automáticamente
+            # - Validar precios y cantidades positivas
             for item in carrito:
-                # Insertar detalle de venta
                 cursor.execute('''
                     INSERT INTO detalle_ventas 
                     (venta_id, producto_id, cantidad, precio_unitario, subtotal, descuento)
                     VALUES (?, ?, ?, ?, ?, ?)
                 ''', (venta_id, item['id'], item['cantidad'],
-                      item['precio'], item['total'], item['descuento']))
+                      item['precio'], item['total'], item.get('descuento', 0)))
 
-                # Actualizar stock del producto
-                producto_actual = producto_model.obtenerPorId(item['id'])
-                if not producto_actual.empty:
-                    stock_actual_raw = producto_actual.iloc[0]['Stock']
-                    stock_actual = 0 if pd.isna(stock_actual_raw) else int(stock_actual_raw)
-                    nuevo_stock = stock_actual - item['cantidad']
-                    producto_model.actualizarRegistroID(item['id'], {
-                        'stock': nuevo_stock
-                    }, cursor=cursor )
             conexion.commit()
             conexion.close()
             return True, venta_id, f"Venta {venta_id} procesada exitosamente"
 
         except Exception as e:
-            if 'conexion' in locals():
+            if conexion:
                 conexion.rollback()
                 conexion.close()
-            return False, None, f"Error al procesar venta: {str(e)}"
+
+            # Mensajes de error más descriptivos basados en los triggers
+            error_msg = str(e)
+            if 'Stock insuficiente' in error_msg:
+                return False, None, "Error: Stock insuficiente para uno o más productos"
+            elif 'precio unitario' in error_msg:
+                return False, None, "Error: El precio debe ser mayor a 0"
+            elif 'cantidad debe ser mayor' in error_msg:
+                return False, None, "Error: La cantidad debe ser mayor a 0"
+            else:
+                return False, None, f"Error al procesar venta: {error_msg}"
 
     def obtenerVenta(self, venta_id): # → Información principal de la venta
         try:
