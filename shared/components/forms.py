@@ -21,7 +21,7 @@ class ProductoForm(QDialog):
         
         self.img_path = ""
         self.entries = {}
-        
+
         self.crearInterfaz()
         self._cargar_datos_si_existe()
     
@@ -122,7 +122,7 @@ class ProductoForm(QDialog):
         categoria_label = QLabel("Categoría:")
         categoria_label.setFixedWidth(100)
         categoria_label.setStyleSheet("font-weight: bold; color: #333;")
-        
+
         self.categoria_cb = QComboBox()
         self.categoria_cb.addItems(cargar_categorias())
         self.categoria_cb.setStyleSheet(self._get_combobox_style())
@@ -136,18 +136,25 @@ class ProductoForm(QDialog):
         
         # Tipo de corte
         corte_layout = QHBoxLayout()
-        corte_label = QLabel("Tipo de Corte:")
-        corte_label.setFixedWidth(100)
-        corte_label.setStyleSheet("font-weight: bold; color: #333;")
-        
+        self.corte_label = QLabel("Tipo de Corte:")
+        self.corte_label.setFixedWidth(100)
+        self.corte_label.setStyleSheet("font-weight: bold; color: #333;")
+
         self.corte_cb = QComboBox()
         self.corte_cb.addItems(cargar_tipos_corte())
         self.corte_cb.setStyleSheet(self._get_combobox_style())
         
-        corte_layout.addWidget(corte_label)
+        corte_layout.addWidget(self.corte_label)
         corte_layout.addWidget(self.corte_cb)
         main_layout.addLayout(corte_layout)
-    
+
+        # Ocultar inicialmente el tipo de corte y su label
+        self.corte_label.hide()
+        self.corte_cb.hide()
+
+        # Conectar la señal para mostrar/ocultar según categoría
+        self.categoria_cb.currentTextChanged.connect(self.mostrarOcultarTipoCorte)
+
     def _crear_seccion_imagen(self, main_layout):
         """Crea la sección de selección de imagen"""
         imagen_layout = QHBoxLayout()
@@ -258,24 +265,24 @@ class ProductoForm(QDialog):
         
         # Llenar campos de texto
         self.entries["Nombre"].setText(str(self.producto_data.get("Nombre", "")))
-        self.entries["Precio"].setText(str(self.producto_data.get("Precio", 0)))
-        self.entries["Stock inicial"].setText(str(self.producto_data.get("Stock", 0)))
-        self.entries["Stock Mínimo"].setText(str(self.producto_data.get("Stock Mínimo", 0)))
+        self.entries["Precio"].setText(str(self.producto_data.get("Precio", "")))
+        self.entries["Stock inicial"].setText(str(self.producto_data.get("Stock", "")))
+        self.entries["Stock Mínimo"].setText(str(self.producto_data.get("Stock Mínimo", 1)))
         
         # Establecer categoría y tipo de corte
         categoria = str(self.producto_data.get("Categoría", ""))
-        tipo_corte = str(self.producto_data.get("Tipo de Corte", ""))
-        
         # Buscar y seleccionar categoría
         categoria_index = self.categoria_cb.findText(categoria)
         if categoria_index >= 0:
             self.categoria_cb.setCurrentIndex(categoria_index)
-        
-        # Buscar y seleccionar tipo de corte
-        corte_index = self.corte_cb.findText(tipo_corte)
-        if corte_index >= 0:
-            self.corte_cb.setCurrentIndex(corte_index)
-        
+
+        if categoria == "carnes":
+            tipo_corte = str(self.producto_data.get("Tipo de Corte", ""))
+            # Buscar y seleccionar tipo de corte
+            corte_index = self.corte_cb.findText(tipo_corte)
+            if corte_index >= 0:
+                self.corte_cb.setCurrentIndex(corte_index)
+
         # Establecer imagen
         imagen_actual = self.producto_data.get("Imagen", "")
         if imagen_actual and os.path.exists(imagen_actual):
@@ -334,16 +341,16 @@ class ProductoForm(QDialog):
         stock, stock_valido = validar_numero(self.entries["Stock inicial"].text(), "int")
         stock_min, stock_min_valido = validar_numero(self.entries["Stock Mínimo"].text(), "int")
         
-        if not precio_valido:
-            QMessageBox.critical(self, "Error", "El precio debe ser un número válido.")
+        if not precio_valido or precio <= 0:
+            QMessageBox.critical(self, "Error", "El precio debe ser mayor que S/0.00")
             return None
         
-        if not stock_valido:
-            QMessageBox.critical(self, "Error", "El stock debe ser un número entero válido.")
+        if not stock_valido or stock <= 0:
+            QMessageBox.critical(self, "Error", "El stock debe ser un número mayor que 0.")
             return None
-        
-        if not stock_min_valido:
-            QMessageBox.critical(self, "Error", "El stock mínimo debe ser un número entero válido.")
+
+        if not stock_min_valido or stock_min <= 0:
+            QMessageBox.critical(self, "Error", "El stock mínimo debe ser un número entero valido mayor que 0.")
             return None
         
         return {
@@ -358,6 +365,16 @@ class ProductoForm(QDialog):
 
     def guardar(self):
         raise NotImplementedError("Debe implementarse en la clase hija")
+
+    def mostrarOcultarTipoCorte(self, categoria): #
+        """Muestra u oculta el campo de tipo de corte según la categoría"""
+        if categoria.lower() == "carne" or categoria.lower() == "carnes":
+            self.corte_label.show()
+            self.corte_cb.show()
+        else:
+            self.corte_label.hide()
+            self.corte_cb.hide()
+            self.corte_cb.setCurrentIndex(0)  # Resetear selección
 
 class ImagenViewer(QLabel):
     def __init__(self, parent = None, **kwargs):

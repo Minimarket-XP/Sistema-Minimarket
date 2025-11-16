@@ -68,7 +68,7 @@ class Dashboard(QMainWindow):
         header = QFrame()
         header.setStyleSheet(f"background-color: {THEME_COLOR}; color: white;")
         header.setFixedHeight(102)
-        
+
         layout = QHBoxLayout(header)
         layout.setContentsMargins(20, 10, 20, 10)
         
@@ -96,7 +96,7 @@ class Dashboard(QMainWindow):
         usuario = QLabel(f"👤 {self.usuario}")
         usuario.setStyleSheet("color: white; font-family: Roboto; font-size: 20px;")
         layout.addWidget(usuario)
-        
+
         return header
     
     def menu_lateral(self):
@@ -121,7 +121,7 @@ class Dashboard(QMainWindow):
         # Agregar gestión de empleados solo para administradores
         if self.usuario_rol in ['administrador', 'admin']:
             botones.insert(3, ("Empleados", self.mostrar_empleados))
-        
+
         for texto, comando in botones:
             btn = QPushButton(texto)
             btn.setStyleSheet(f"""
@@ -172,14 +172,14 @@ class Dashboard(QMainWindow):
         titulo = QLabel("🏪 Bienvenido al Sistema")
         titulo.setAlignment(Qt.AlignCenter)
         titulo.setStyleSheet("font-size: 54px; font-weight: bold; color: #2c3e50; margin: 20px;")
-        
+
         subtitulo = QLabel("Selecciona un módulo del menú para comenzar")
         subtitulo.setAlignment(Qt.AlignCenter)
         subtitulo.setStyleSheet("font-size: 20px; color: #7f8c8d;")
-        
+
         layout.addWidget(titulo)
         layout.addWidget(subtitulo)
-        
+
         self.main_content.addWidget(widget)
         self.main_content.setCurrentWidget(widget)
     
@@ -211,8 +211,15 @@ class Dashboard(QMainWindow):
     
     def mostrar_reportes(self):
         self.limpiar_contenido()
-        self.mostrar_error("Reportes", "Próximamente en Sprint 2")
-    
+        try:
+            from modules.reportes.reportes_view import ReportesFrame
+            reportes = ReportesFrame(self)
+            self.main_content.addWidget(reportes)
+            self.main_content.setCurrentWidget(reportes)
+        except Exception as e:
+            print("ERROR aquí", e)
+            self.mostrar_error("Reportes", str(e))
+
     def mostrar_empleados(self):
         self.limpiar_contenido()
         try:
