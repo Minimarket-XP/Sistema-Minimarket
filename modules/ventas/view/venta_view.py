@@ -18,12 +18,17 @@ from models.descuentos import AplicarDescuento
 from views.inventario import TablaNoEditable
 =======
 from core.config import *
-from modules.productos.producto_model import ProductoModel
-from modules.ventas.venta_model import VentaModel
+from modules.productos.models.producto_model import ProductoModel
+from modules.ventas.models.venta_model import VentaModel
 from shared.helpers import formatear_precio
+<<<<<<< HEAD:modules/ventas/venta_view.py
 from modules.ventas.descuentos import AplicarDescuento
 from modules.productos.inventario_view import TablaNoEditable
 >>>>>>> 51bcbc5 (feat: Preparación de la estructura para el Sprint 2 XP - archivos base):modules/ventas/venta_view.py
+=======
+from modules.ventas.service.descuentos_service import AplicarDescuento
+from modules.productos.view.inventario_view import TablaNoEditable
+>>>>>>> 19c5efe (refactor(modules/ventas): reorganizar MVC):modules/ventas/view/venta_view.py
 import pandas as pd
 
 class VentasFrame(QWidget):
