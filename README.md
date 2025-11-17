@@ -28,10 +28,12 @@ Sistema de gestión completo para minimarket que incluye manejo de inventario, v
 
 ## Tecnologías
 
-- **Python 3.x**
+- **Python 3.12**
 - **PyQt5** - Interfaz gráfica moderna y profesional
-- **SQLite** - Base de datos integrada
-- **pandas** - Manejo de datos
+- **SQLite** - Base de datos integrada con 17 triggers automáticos
+- **bcrypt** - Encriptación segura de contraseñas
+- **pandas** - Manejo de datos y análisis
+- **matplotlib** - Gráficos y visualizaciones
 - **Pillow (PIL)** - Procesamiento de imágenes
 - **ReportLab** - Generación de reportes PDF
 - **OpenPyXL** - Exportación a Excel
@@ -70,53 +72,111 @@ python main.py
 
 ```
 Sistema-Minimarket-wa/
-├── gitignore                  # Exclusiones git
-├── buid_exe.ps1               # Script PowerShell para crear .exe
+├── .gitignore                 # Exclusiones git
+├── build_exe.ps1              # Script PowerShell para crear .exe
 ├── main.py                    # Punto de entrada aplicación
 ├── README.md                  # Documentación proyecto
 ├── requirements.txt           # Lista dependencias python
-├── S_Minimarket_Fixed.espec   # Configuración PyInstaller
-├── temp_minimarket.jpg        # Imagen temporal
-├── .venv/                     # Entorno virtual Python (286 MB)
+├── SistemaMinimarket.spec     # Configuración PyInstaller
+├── .venv/                     # Entorno virtual Python
 ├── core/
-│   ├── base_model.py               # Modelos base
-│   ├── config.py                   # Configuración global
-│   └── database.py                 # Conexión base de datos
+│   ├── base_model.py          # Modelo base para herencia
+│   ├── config.py              # Configuración global
+│   ├── database.py            # Conexión BD y schema (17 tablas, 17 triggers)
+│   └── exceptions.py          # Excepciones personalizadas
 ├── db/
-│   ├── imagenes/                   # Imágenes de la aplicación
-│   └── minimarket.db               # Base de datos SQLite
+│   ├── imagenes/              # Imágenes de productos
+│   └── minimarket.db          # Base de datos SQLite
 ├── modules/
-│   ├── clientes
-│   │   ├── cliente_model.py        # Lógica clientes
-│   │   └── cliente_view.py         # Interfaz clientes
-│   ├── empleados
-│   │   ├── empleado_model.py       # Lógica empleados
-│   │   └── empleado_view.py        # Interfaz empleados
-│   ├── productos
-│   │   ├── alertas.py              # Lógica alertas productos
-│   │   ├── inventario_view.py      # Interfaz inventario
-│   │   └── producto_model.py       # Lógica productos
-│   ├── reportes
-│   │   ├── exportador.py           # Lógica exportar reportes
-│   │   └── reporte_view.py         # Interfaz reportes
-│   └── ventas
-│       ├── comprobantes_api.py     # Lógica comprobantes
-│       ├── descuentos.py           # Lógica descuentos
-│       ├── devoluciones_view.py    # Interfaz devoluciones
-│       ├── venta_model.py          # Lógica ventas
-│       └── venta_view.py           # Interfaz ventas
-├── shared/
-│   ├── components
-│       └── forms.py                # Formularios reutilizables
-│   ├── dashboard.py                # Pantalla principal
-│   ├── helpers.py                  # Funciones auxiliares
-│   └── login.py                    # Módulo login
-└── .env                        # Variables entorno (no subir a git)
+│   ├── productos/
+│   │   ├── models/
+│   │   │   ├── categoria_model.py
+│   │   │   ├── producto_model.py
+│   │   │   ├── promocion_model.py
+│   │   │   ├── promocion_producto_model.py
+│   │   │   ├── tipo_producto_model.py
+│   │   │   └── unidad_medida_model.py
+│   │   ├── service/
+│   │   │   ├── alertas_service.py         # Alertas de stock
+│   │   │   ├── producto_service.py        # Lógica de negocio productos
+│   │   │   └── promocion_service.py       # Lógica de promociones
+│   │   └── view/
+│   │       └── inventario_view.py         # Interfaz inventario
+│   ├── ventas/
+│   │   ├── models/
+│   │   │   ├── comprobante_model.py
+│   │   │   ├── detalle_devolucion_model.py
+│   │   │   ├── detalle_venta_model.py
+│   │   │   ├── devolucion_model.py
+│   │   │   ├── nota_credito_model.py
+│   │   │   └── venta_model.py
+│   │   ├── service/
+│   │   │   ├── comprobante_service.py     # Facturación electrónica
+│   │   │   ├── descuentos_service.py      # Lógica de descuentos
+│   │   │   ├── devolucion_service.py      # Lógica de devoluciones
+│   │   │   └── venta_service.py           # Lógica de ventas
+│   │   └── view/
+│   │       ├── devoluciones_view.py       # Interfaz devoluciones
+│   │       └── venta_view.py              # Interfaz punto de venta
+│   ├── reportes/
+│   │   ├── exportador_service.py          # Exportación PDF/Excel
+│   │   ├── reporte_service.py             # Generación de reportes
+│   │   └── reportes_view.py               # Interfaz reportes
+│   ├── seguridad/
+│   │   ├── models/
+│   │   │   ├── empleado_model.py
+│   │   │   ├── rol_model.py
+│   │   │   └── usuario_model.py
+│   │   ├── services/
+│   │   │   ├── auth_service.py            # Autenticación y autorización
+│   │   │   └── empleado_service.py        # Lógica de empleados
+│   │   └── view/
+│   │       ├── empleado_view.py           # Interfaz empleados
+│   │       └── login.py                   # Módulo login
+│   └── sistema/
+│       ├── models/
+│       │   ├── auditoria_model.py
+│       │   ├── backuplog_model.py
+│       │   └── configuracion_model.py
+│       ├── auditoria_service.py           # Logs de auditoría
+│       ├── backup_service.py              # Backups automáticos
+│       └── configuracion_view.py          # Configuración sistema
+└── shared/
+    ├── components/
+    │   └── forms.py                       # Formularios reutilizables
+    ├── dashboard.py                       # Pantalla principal
+    └── helpers.py                         # Funciones auxiliares
 ```
 
 ## Funcionalidades
 
-###  Sprint 1 - FUNCIONALIDAD MÍNIMA VIABLE
+### Arquitectura
+
+El sistema implementa una arquitectura MVC modular de 4 capas:
+
+1. **Presentation Layer (View)** - Interfaces PyQt5
+2. **Business Logic Layer (Service)** - Lógica de negocio
+3. **Data Access Layer (Model)** - Acceso a datos
+4. **Infrastructure Layer (Core)** - Configuración y utilidades
+
+### Base de Datos
+
+**17 Tablas Normalizadas:**
+- Productos: `tipo_productos`, `categoria_productos`, `unidad_medida`, `productos`, `promocion`, `promocion_producto`
+- Seguridad: `rol`, `empleado`, `usuario`
+- Ventas: `ventas`, `detalle_venta`, `comprobante`, `devolucion`, `detalle_devolucion`, `nota_credito`
+- Sistema: `auditoria`, `backup_log`, `configuracion`
+
+**17 Triggers Automáticos:**
+- Validación: cantidad, precio, stock, fechas, descuentos, usuarios
+- Cálculo: subtotal automático en detalles
+- Stock: actualización automática en ventas/devoluciones/modificaciones
+- Total venta: recálculo automático en operaciones
+- Integridad: cascada de eliminaciones
+- Promociones: validación de fechas y porcentajes
+- Seguridad: validación de contraseñas y usernames
+
+### Sprint 1 - FUNCIONALIDAD MÍNIMA VIABLE
 | Cod. Historia     | Descripción de la Historia    | Puntos    |
 |-------------------|-------------------------------|-----------|
 | **HUO001**        | Como administrador, quiero poder registrar nuevos productos en el sistema para mantener actualizado el catálogo del minimarket.  | **5** |
@@ -142,16 +202,25 @@ Sistema-Minimarket-wa/
 
 ### Sprint 3 - OPTIMIZACIÓN Y PERFORMANCE
 
-----------------------------------------------------------
+- Refactorización completa a arquitectura MVC modular
+- Separación de responsabilidades en capas (Model-Service-View)
+- Normalización de base de datos (17 tablas)
+- Implementación de 17 triggers automáticos
+- Separación empleado/usuario para autenticación
+- Encriptación bcrypt para contraseñas
+- Sistema de auditoría y backups
+- Optimización de consultas SQL
 
-## 👨‍💻 Equipo de Desarrollo 
+---
+
+## Equipo de Desarrollo
 
 | Autor             | Cargo      |
 |-------------------|------------|
 | **Arif Khan Montoya, Rayyan**  | **Developer**  |
-| **Campos Acevedo,	Gianfranco**     | **Scrum Master** |
+| **Campos Acevedo, Gianfranco**     | **Scrum Master** |
 | **Choncen Gutierrez, Daniela**     | **Developer** |
-| **Perez Rocha,	Hugo**     | **Developer** |
+| **Perez Rocha, Hugo**     | **Developer** |
 | **Rodriguez Malca, Rodrigo**     | **Developer** |
 | **Zumaeta Calderon, Adriel**     | **Developer** |
 
@@ -163,35 +232,35 @@ Sistema-Minimarket-wa/
 
 El sistema está disponible como **ejecutable independiente** que no requiere Python instalado:
 
-#### **Características:**
+#### Características:
 - **Sistema completo** con todas las funcionalidades
 - **Login integrado** (Usuario: `admin`, Contraseña: `admin`)
-- **Gestión de inventarios** con sistema P0001
-- **Gestión de ventas** con facturación y recibos
-- **Punto de venta (POS)** completo
+- **Gestión de inventarios** con sistema de códigos automáticos
+- **Gestión de ventas** con facturación y comprobantes
+- **Punto de venta (POS)** completo con descuentos
+- **Sistema de devoluciones** y notas de crédito
 - **Reportes automáticos** (PDF y Excel)
-- **Base de datos SQLite** incluida
-- **Interfaz PyQt5** profesional
+- **Base de datos SQLite** con triggers automáticos
+- **Interfaz PyQt5** profesional y moderna
+- **Sistema de auditoría** y backups integrado
 
-#### **Dependencias Incluidas:**
+#### Dependencias Incluidas:
 - Python 3.12
-- PyQt5 (Interfaz gráfica)  
+- PyQt5 (Interfaz gráfica)
 - SQLite (Base de datos)
+- bcrypt (Encriptación)
 - Pandas + OpenPyXL (Reportes Excel)
+- matplotlib (Gráficos)
 - ReportLab (PDFs)
 - PIL/Pillow (Imágenes)
 - requests (API comprobantes)
-- setuptools
-- wheel
-- PyInstaller
-- matplotlib
+- setuptools, wheel, PyInstaller
 - Todas las librerías del sistema
 
-#### **Scripts de Compilación:**
-- `crear_exe_simple.bat` - Script principal para generar ejecutable
-- `build_exe.ps1` - Script PowerShell alternativo con validaciones
-- `SistemaMinimarket_Fixed.spec` - Configuración PyInstaller optimizada
+#### Scripts de Compilación:
+- `build_exe.ps1` - Script PowerShell principal para generar ejecutable
+- `SistemaMinimarket.spec` - Configuración PyInstaller optimizada
 
-> **Nota:** El ejecutable incluye correcciones de compatibilidad y todas las dependencias de Visual C++ Runtime para funcionamiento sin errores en cualquier PC Windows.
+> **Nota:** El ejecutable incluye correcciones de compatibilidad y todas las dependencias necesarias para funcionamiento sin errores en cualquier PC Windows 10/11.
 
 ---
