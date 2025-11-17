@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QHeaderView, QMessageBox, QAbstractItemView)
 from PyQt5.QtCore import Qt
 import pandas as pd
-from modules.productos.producto_model import ProductoModel
+from modules.productos.models.producto_model import ProductoModel
 from shared.components.forms import ProductoForm, ImagenViewer
 from shared.helpers import formatear_precio
 from core.config import *
