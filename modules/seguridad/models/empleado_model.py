@@ -8,9 +8,9 @@ class EmpleadoModel(BaseModel):
         # Definir columnas de la tabla empleados
         columns = ['id', 'nombre', 'apellido', 'usuario', 'contraseña', 'rol', 'activo']
         super().__init__('empleados', columns)
-    
+
+    # Valida credenciales usando bcrypt para comparar contraseñas encriptadas
     def validar_credenciales(self, usuario, password):
-        """Valida las credenciales usando bcrypt para comparar contraseñas encriptadas"""
         try:
             # Obtener el empleado por usuario
             empleados = self.get_all("usuario = ? AND activo = 1", (usuario,))
