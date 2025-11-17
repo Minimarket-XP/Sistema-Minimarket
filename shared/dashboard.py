@@ -192,7 +192,7 @@ class Dashboard(QMainWindow):
     def mostrar_inventario(self):
         self.limpiar_contenido()
         try:
-            from modules.productos.inventario_view import InventarioFrame
+            from modules.productos.view.inventario_view import InventarioFrame
             inventario = InventarioFrame(self)
             self.main_content.addWidget(inventario)
             self.main_content.setCurrentWidget(inventario)
@@ -202,7 +202,7 @@ class Dashboard(QMainWindow):
     def mostrar_ventas(self):
         self.limpiar_contenido()
         try:
-            from modules.ventas.venta_view import VentasFrame
+            from modules.ventas.view.venta_view import VentasFrame
             ventas = VentasFrame(self)
             self.main_content.addWidget(ventas)
             self.main_content.setCurrentWidget(ventas)
@@ -287,7 +287,7 @@ class Dashboard(QMainWindow):
     def cerrar_sesion(self):
         """Cierra sesión y vuelve al login"""
         self.hide()
-        from shared.login import LoginVentana
+        from modules.seguridad.view.login import LoginVentana
         self.login_window = LoginVentana()
         self.login_window.show()
     
