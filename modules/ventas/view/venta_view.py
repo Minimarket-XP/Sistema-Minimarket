@@ -6,11 +6,11 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QAbstractItemView, QHeaderView, QInputDialog)
 from PyQt5.QtCore import Qt
 from core.config import *
-from modules.productos.producto_model import ProductoModel
-from modules.ventas.venta_model import VentaModel
+from modules.productos.models.producto_model import ProductoModel
+from modules.ventas.models.venta_model import VentaModel
 from shared.helpers import formatear_precio
-from modules.ventas.descuentos import AplicarDescuento
-from modules.productos.inventario_view import TablaNoEditable
+from modules.ventas.service.descuentos_service import AplicarDescuento
+from modules.productos.view.inventario_view import TablaNoEditable
 import pandas as pd
 
 class VentasFrame(QWidget):
