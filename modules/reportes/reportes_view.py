@@ -16,8 +16,8 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QPushButton, QTabWidget, QDateEdit, QComboBox, QFileDialog, QMessageBox,
                              QTableWidget, QTableWidgetItem, QSizePolicy)
 from PyQt5.QtCore import Qt, QDate
-from modules.ventas.venta_model import VentaModel
-from modules.reportes.exportador import exportar_pdf, exportar_excel
+from modules.ventas.models.venta_model import VentaModel
+from modules.reportes.exportador_service import exportar_pdf, exportar_excel
 import pandas as pd
 from core.database import db
 
@@ -515,7 +515,7 @@ class ReportesFrame(QWidget):
 
                 ax1.set_title(f"Ventas ({periodo})", fontsize=16, fontweight='bold',
                             color='#2c3e50', pad=20)
-                ax1.set_ylabel('Total neto ($)', fontsize=12, fontweight='bold', color='#34495e')
+                ax1.set_ylabel('Total neto (S/.)', fontsize=12, fontweight='bold', color='#34495e')
                 ax1.set_xlabel('Fecha', fontsize=12, fontweight='bold', color='#34495e')
 
                 # Grid más sutil y profesional
@@ -655,7 +655,7 @@ class ReportesFrame(QWidget):
             col_map = {
                 'producto_nombre': 'Producto',
                 'total_vendido': 'Cantidad Vendida',
-                'ingresos_totales': 'Ingresos Totales ($)'
+                'ingresos_totales': 'Ingresos Totales (S/.)'
             }
             display_cols_p = [col_map.get(c, c) for c in cols_p]
 
@@ -709,7 +709,7 @@ class ReportesFrame(QWidget):
 
                 ax3.set_title('Resumen de ingresos y descuentos', fontsize=16,
                             fontweight='bold', color='#2c3e50', pad=20)
-                ax3.set_ylabel('Monto ($)', fontsize=12, fontweight='bold',
+                ax3.set_ylabel('Monto (S/.)', fontsize=12, fontweight='bold',
                              color='#34495e')
 
                 # Grid más sutil
