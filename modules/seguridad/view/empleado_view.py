@@ -10,7 +10,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 from modules.empleados.empleado_model import EmpleadoModel
 from core.config import *
-from modules.productos.inventario_view import TablaNoEditable
+from modules.productos.view.inventario_view import TablaNoEditable
 
 class EmpleadosWidget(QWidget):
     def __init__(self, usuario_rol='empleado'):
