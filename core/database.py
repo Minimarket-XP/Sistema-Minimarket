@@ -139,11 +139,14 @@ class Database:
             # Tabla de ventas
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS ventas (
-                    id_venta INTEGER PRIMARY KEY,
+                    id_venta TEXT PRIMARY KEY,
                     fecha_venta DATETIME DEFAULT CURRENT_TIMESTAMP,
                     metodo_pago TEXT CHECK(metodo_pago IN ('efectivo', 'tarjeta', 'yape', 'plin', 'transferencia', 'vale')) NOT NULL DEFAULT 'efectivo',
                     total_venta REAL NOT NULL DEFAULT 0,
                     estado_venta TEXT CHECK(estado_venta IN ('completado', 'cancelado', 'devuelto')) NOT NULL DEFAULT 'completado',
+                    descuento_venta REAL DEFAULT 0,
+                    descuento_pct REAL DEFAULT 0,
+                    descuento_tipo TEXT DEFAULT '',
                     id_empleado INTEGER NOT NULL,
                     FOREIGN KEY (id_empleado) REFERENCES empleado (id_empleado)
                 )
@@ -285,30 +288,38 @@ class Database:
 
     def datos_iniciales(self, cursor): # → Insertar datos iniciales del minimarket
         try:
-            # Insertar rol de administrador (en caso no exista)
+            # Verificar si ya existen datos iniciales
+            cursor.execute("SELECT COUNT(*) FROM rol WHERE nombre_rol = 'admin'")
+            if cursor.fetchone()[0] > 0:
+                # Ya existen datos iniciales, salir
+                return
+            
+            # Insertar rol de administrador
             cursor.execute('''
-                INSERT OR IGNORE INTO rol (nombre_rol)
+                INSERT INTO rol (nombre_rol)
                 VALUES ('admin')
             ''')
 
             # obtener el id del rol admin
             cursor.execute("SELECT id_rol FROM rol WHERE nombre_rol = 'admin'")
-            # fetchone() devuelve una tupla, obtener el primer elemento
             admin_rol_id = cursor.fetchone()[0]
-            # Verificar si el empleado admin ya existe
-            if admin_rol_id:
-                # En caso no exista, insertar empleado admin y asignarle el rol de admin
-                cursor.execute('''
-                    INSERT OR IGNORE INTO empleado (nombre_empleado, apellido_empleado, id_rol)
-                    VALUES ('Administrador', 'Sistema', ?)
-                    ''', (admin_rol_id,))
+            
+            # Insertar empleado admin
+            cursor.execute('''
+                INSERT INTO empleado (nombre_empleado, apellido_empleado, id_rol)
+                VALUES ('Administrador', 'Sistema', ?)
+            ''', (admin_rol_id,))
 
-            # Insertar usuario administrador (si no existe) con contraseña encriptada
+            # Obtener ID del empleado admin
+            cursor.execute("SELECT id_empleado FROM empleado WHERE nombre_empleado = 'Administrador' AND apellido_empleado = 'Sistema'")
+            admin_empleado_id = cursor.fetchone()[0]
+
+            # Insertar usuario administrador con contraseña encriptada
             hashed_password = bcrypt.hashpw('admin'.encode('utf-8'), bcrypt.gensalt())
             cursor.execute('''
-                INSERT OR IGNORE INTO usuario (username, password_hash, estado_usuario, id_empleado)
-                VALUES ('admin', ?, 'activo', (SELECT id_empleado FROM empleado WHERE nombre_empleado = 'Administrador' AND apellido_empleado = 'Sistema'))
-            ''', (hashed_password,))
+                INSERT INTO usuario (username, password_hash, estado_usuario, id_empleado)
+                VALUES ('admin', ?, 'activo', ?)
+            ''', (hashed_password, admin_empleado_id))
 
             # Insertar categorías
             categorias_basicas = [
@@ -331,7 +342,7 @@ class Database:
                     "WHERE nombre_categoria = ?", (nombre,))
                 if cursor.fetchone()[0] == 0:
                     cursor.execute('''
-                        INSERT INTO categoria_productos (nombre_categorias, descripcion)
+                        INSERT INTO categoria_productos (nombre_categoria, descripcion)
                         VALUES (?, ?)
                     ''', (nombre, descripcion))
 
@@ -350,6 +361,75 @@ class Database:
                 ('Detergentes', 'Detergentes y limpiadores'),
                 ('Snacks', 'Aperitivos y snacks')
             ]
+
+            for nombre, descripcion in tipos_productos:
+                cursor.execute(
+                    "SELECT COUNT(*) "
+                    "FROM tipo_productos "
+                    "WHERE nombre_tipo = ?", (nombre,))
+                if cursor.fetchone()[0] == 0:
+                    cursor.execute('''
+                        INSERT INTO tipo_productos (nombre_tipo, descripcion)
+                        VALUES (?, ?)
+                    ''', (nombre, descripcion))
+
+            # Insertar roles adicionales
+            roles_adicionales = ['cajero', 'vendedor', 'almacenista', 'supervisor']
+
+            for nombre in roles_adicionales:
+                cursor.execute(
+                    "SELECT COUNT(*) "
+                    "FROM rol "
+                    "WHERE nombre_rol = ?", (nombre,))
+                if cursor.fetchone()[0] == 0:
+                    cursor.execute('''
+                        INSERT INTO rol (nombre_rol)
+                        VALUES (?)
+                    ''', (nombre,))
+
+            # Insertar unidades de medida
+            unidades_medida = [
+                ('Kilogramo', 'kg'),
+                ('Gramo', 'g'),
+                ('Litro', 'L'),
+                ('Mililitro', 'mL'),
+                ('Unidad', 'und'),
+                ('Paquete', 'paq'),
+                ('Caja', 'cja'),
+                ('Botella', 'bot'),
+                ('Lata', 'lta')
+            ]
+
+            for nombre, descripcion in unidades_medida:
+                cursor.execute(
+                    "SELECT COUNT(*) "
+                    "FROM unidad_medida "
+                    "WHERE nombre_unidad = ?", (nombre,))
+                if cursor.fetchone()[0] == 0:
+                    cursor.execute('''
+                        INSERT INTO unidad_medida (nombre_unidad, descripcion)
+                        VALUES (?, ?)
+                    ''', (nombre, descripcion))
+
+            # Insertar productos de ejemplo
+            productos_ejemplo = [
+                ('PROD0001', 'Arroz Catalán Verde', 'Arroz de grano largo', 3.80, 100, 20, 'activo', None, None, 1, 1, 1),
+                ('PROD0002', 'Azúcar Blanca', 'Azúcar refinada', 2.80, 80, 15, 'activo', None, None, 2, 1, 1),
+                ('PROD0003', 'Aceite de Soya VEGA Botella 500ml', 'Aceite de soya', 4.30, 50, 10, 'activo', None, None, 3, 1, 4),
+                ('PROD0004', 'Leche Reconstituida GLORIA Quinua, Kiwicha y Cañihua Lata 390g x6u', 'Leche entera evaporada', 25.20, 60, 15, 'activo', None, None, 4, 4, 5),
+                ('PROD0005', 'Coca Cola 1.5L', 'Gaseosa Coca Cola', 4.50, 40, 10, 'activo', None, None, 6, 2, 4)
+            ]
+
+            for producto in productos_ejemplo:
+                cursor.execute(
+                    "SELECT COUNT(*) FROM productos WHERE id_producto = ?", (producto[0],))
+                if cursor.fetchone()[0] == 0:
+                    cursor.execute('''
+                        INSERT INTO productos (id_producto, nombre_producto, descripcion_producto, 
+                                              precio_producto, stock_producto, stock_minimo, estado_producto,
+                                              tipo_corte, imagen, id_tipo_productos, id_categoria_productos, id_unidad_medida)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', producto)
 
             # Insertar configuraciones básicas
             configuraciones = [
@@ -638,14 +718,13 @@ class Database:
         cursor.execute('DROP TRIGGER IF EXISTS actualizar_estado_promocion_expirada')
         cursor.execute('''
             CREATE TRIGGER actualizar_estado_promocion_expirada
-            BEFORE UPDATE ON promocion
+            AFTER UPDATE ON promocion
             FOR EACH ROW
             WHEN datetime('now') > NEW.fecha_fin AND NEW.estado_promocion != 'expirada'
             BEGIN
-                SELECT CASE
-                    WHEN 1 = 1 THEN
-                        UPDATE promocion SET estado_promocion = 'expirada' WHERE id_promocion = NEW.id_promocion
-                END;
+                UPDATE promocion 
+                SET estado_promocion = 'expirada' 
+                WHERE id_promocion = NEW.id_promocion;
             END
         ''')
 
@@ -658,7 +737,9 @@ class Database:
             BEFORE UPDATE ON productos
             FOR EACH ROW
             BEGIN
-                SELECT datetime('now');
+                UPDATE productos
+                SET fecha_actualizacion = CURRENT_TIMESTAMP
+                WHERE id_producto = NEW.id_producto;
             END
         ''')
 

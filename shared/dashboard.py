@@ -18,10 +18,10 @@ class Dashboard(QMainWindow):
     
     def obtener_rol_usuario(self): # → Obtener el rol de usuario activo
         try:
-            from modules.empleados.empleado_model import EmpleadoModel
-            empleado_model = EmpleadoModel()
-            empleado = empleado_model.obtenerUsuario(self.usuario)
-            return empleado['rol'] if empleado else 'empleado'
+            from modules.seguridad.services.auth_service import AuthService
+            auth_service = AuthService()
+            usuario_data = auth_service.obtener_usuario_autenticado(self.usuario)
+            return usuario_data['nombre_rol'] if usuario_data else 'empleado'
         except Exception as e:
             print(f"Error obteniendo rol de usuario: {e}")
             return 'empleado'
@@ -111,7 +111,7 @@ class Dashboard(QMainWindow):
         botones = [
             ("Ventas", self.mostrar_ventas),
             ("Inventario", self.mostrar_inventario),
-            ("Compras", self.mostrar_compras),
+            ("Promociones", self.mostrar_promociones),
             ("Alertas", self.mostrar_alertas),
             ("Devoluciones", self.mostrar_devoluciones),
             ("Reportes", self.mostrar_reportes),
@@ -223,26 +223,26 @@ class Dashboard(QMainWindow):
     def mostrar_empleados(self):
         self.limpiar_contenido()
         try:
-            from modules.empleados.empleado_view import EmpleadosWidget
+            from modules.seguridad.view.empleado_view import EmpleadosWidget
             empleados_widget = EmpleadosWidget(self.usuario_rol)
             self.main_content.addWidget(empleados_widget)
             self.main_content.setCurrentWidget(empleados_widget)
         except Exception as e:
             self.mostrar_error("Empleados", f"Error al cargar módulo: {str(e)}")
     
-    def mostrar_compras(self):
+    def mostrar_promociones(self): # → Adriel + Choncen
         self.limpiar_contenido()
         self.mostrar_error("Compras", "Próximamente en Sprint 2")
 
-    def mostrar_alertas(self):
+    def mostrar_alertas(self): # → Arif + Hugo
         self.limpiar_contenido()
         self.mostrar_error("Alertas", "Próximamente en Sprint 2")
 
-    def mostrar_devoluciones(self):
+    def mostrar_devoluciones(self): # → Rodrigo + Gian
         self.limpiar_contenido()
         self.mostrar_error("Devoluciones", "Próximamente en Sprint 2")
     
-    def mostrar_configuracion(self):
+    def mostrar_configuracion(self): # → Sorteo → Semana 14
         self.limpiar_contenido()
         self.mostrar_error("⚙️ Configuración", "Próximamente en Sprint 2")
     
