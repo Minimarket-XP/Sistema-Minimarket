@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QPushButton, QTabWidget, QDateEdit, QComboBox, QFileDialog, QMessageBox,
                              QTableWidget, QTableWidgetItem, QSizePolicy)
 from PyQt5.QtCore import Qt, QDate
-from modules.ventas.models.venta_model import VentaModel
+from modules.ventas.service.venta_service import VentaService
 from modules.reportes.exportador_service import exportar_pdf, exportar_excel
 import pandas as pd
 from core.database import db
@@ -24,7 +24,7 @@ from core.database import db
 class ReportesFrame(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.venta_model = VentaModel()
+        self.venta_service = VentaService()  # Usar Service en vez de Model
         self.init_ui()
 
     def init_ui(self):
@@ -416,7 +416,7 @@ class ReportesFrame(QWidget):
         try:
             conn = db.get_connection()
             cur = conn.cursor()
-            cur.execute("SELECT MIN(DATE(fecha)) FROM ventas")
+            cur.execute("SELECT MIN(DATE(fecha_venta)) FROM ventas")
             row = cur.fetchone()
             conn.close()
             if row and row[0]:
@@ -436,23 +436,23 @@ class ReportesFrame(QWidget):
         try:
             conn = db.get_connection()
             df_v = pd.read_sql_query(
-                "SELECT fecha, total, descuento FROM ventas WHERE DATE(fecha) BETWEEN ? AND ? ORDER BY fecha ASC",
-                conn, params=[fecha_desde_str, fecha_hasta_str], parse_dates=['fecha']
+                "SELECT fecha_venta, total_venta, descuento_venta FROM ventas WHERE DATE(fecha_venta) BETWEEN ? AND ? ORDER BY fecha_venta ASC",
+                conn, params=[fecha_desde_str, fecha_hasta_str], parse_dates=['fecha_venta']
             )
             conn.close()
         except Exception:
-            df_v = pd.DataFrame(columns=['fecha', 'total', 'descuento'])
+            df_v = pd.DataFrame(columns=['fecha_venta', 'total_venta', 'descuento_venta'])
 
         if not df_v.empty:
-            df_v['fecha'] = pd.to_datetime(df_v['fecha'])
-            df_v.set_index('fecha', inplace=True)
+            df_v['fecha_venta'] = pd.to_datetime(df_v['fecha_venta'])
+            df_v.set_index('fecha_venta', inplace=True)
             # ensure numeric columns are usable (fill NaN/None)
-            df_v['total'] = df_v['total'].fillna(0).astype(float)
-            df_v['descuento'] = df_v['descuento'].fillna(0).astype(float)
+            df_v['total_venta'] = df_v['total_venta'].fillna(0).astype(float)
+            df_v['descuento_venta'] = df_v['descuento_venta'].fillna(0).astype(float)
             # total stored is net after discount; compute gross = total + descuento
-            df_v['gross'] = df_v['total'] + df_v['descuento']
+            df_v['gross'] = df_v['total_venta'] + df_v['descuento_venta']
             freq = {'Diario': 'D', 'Semanal': 'W', 'Mensual': 'M'}.get(periodo, 'D')
-            series = df_v['total'].resample(freq).sum()
+            series = df_v['total_venta'].resample(freq).sum()
         else:
             series = pd.Series([], dtype=float)
 
@@ -460,10 +460,14 @@ class ReportesFrame(QWidget):
         if self._has_mpl and self.canvas1 is not None:
             # Clear entire figure to avoid overlapping axes
             try:
-                self.canvas1.figure.clear()
-                ax1 = self.canvas1.figure.add_subplot(111)
-            except Exception:
-                ax1 = self.canvas1.figure.subplots()
+                if hasattr(self.canvas1, 'figure') and self.canvas1.figure:
+                    self.canvas1.figure.clear()
+                    ax1 = self.canvas1.figure.add_subplot(111)
+                else:
+                    return  # No figure disponible
+            except Exception as e:
+                print(f"Error creando gráfico de ventas: {e}")
+                return
 
             if not series.empty:
                 # apply date locators/formatters according to granularity
@@ -555,10 +559,11 @@ class ReportesFrame(QWidget):
                 ax1.text(0.5, 0.5, 'No hay ventas en el rango seleccionado', ha='center')
 
             try:
-                self.canvas1.figure.tight_layout()
-            except Exception:
-                pass
-            self.canvas1.draw()
+                if hasattr(self.canvas1, 'figure') and self.canvas1.figure:
+                    self.canvas1.figure.tight_layout()
+                    self.canvas1.draw()
+            except Exception as e:
+                print(f"Error dibujando gráfico: {e}")
         else:
             # Update placeholder text if present
             if getattr(self, 'placeholder1', None) is not None:
@@ -568,12 +573,12 @@ class ReportesFrame(QWidget):
         try:
             conn = db.get_connection()
             query = '''
-                SELECT p.nombre as producto_nombre, SUM(dv.cantidad) as total_vendido, SUM(dv.subtotal) as ingresos_totales
-                FROM detalle_ventas dv
-                JOIN ventas v ON dv.venta_id = v.id
-                JOIN productos p ON dv.producto_id = p.id
-                WHERE DATE(v.fecha) BETWEEN ? AND ?
-                GROUP BY dv.producto_id, p.nombre
+                SELECT p.nombre_producto as producto_nombre, SUM(dv.cantidad_detalle) as total_vendido, SUM(dv.subtotal_detalle) as ingresos_totales
+                FROM detalle_venta dv
+                JOIN ventas v ON dv.id_venta = v.id_venta
+                JOIN productos p ON dv.id_producto = p.id_producto
+                WHERE DATE(v.fecha_venta) BETWEEN ? AND ?
+                GROUP BY dv.id_producto, p.nombre_producto
                 ORDER BY total_vendido DESC
                 LIMIT 10
             '''
@@ -584,10 +589,14 @@ class ReportesFrame(QWidget):
 
         if self._has_mpl and self.canvas2 is not None:
             try:
-                self.canvas2.figure.clear()
-                ax2 = self.canvas2.figure.add_subplot(111)
-            except Exception:
-                ax2 = self.canvas2.figure.subplots()
+                if hasattr(self.canvas2, 'figure') and self.canvas2.figure:
+                    self.canvas2.figure.clear()
+                    ax2 = self.canvas2.figure.add_subplot(111)
+                else:
+                    return
+            except Exception as e:
+                print(f"Error creando gráfico de productos: {e}")
+                return
 
             if not df_p.empty:
                 names = df_p['producto_nombre'].astype(str).tolist()
@@ -641,10 +650,11 @@ class ReportesFrame(QWidget):
                 ax2.text(0.5, 0.5, 'No hay datos', ha='center')
 
             try:
-                self.canvas2.figure.tight_layout()
-            except Exception:
-                pass
-            self.canvas2.draw()
+                if hasattr(self.canvas2, 'figure') and self.canvas2.figure:
+                    self.canvas2.figure.tight_layout()
+                    self.canvas2.draw()
+            except Exception as e:
+                print(f"Error dibujando gráfico productos: {e}")
         else:
             if getattr(self, 'placeholder2', None) is not None:
                 self.placeholder2.setText("Matplotlib no está instalado. Instala: pip install matplotlib")
@@ -678,21 +688,29 @@ class ReportesFrame(QWidget):
             # limpiar tabla
             self.table_prod.setRowCount(0)
             self.table_prod.setColumnCount(0)
-        self.canvas2.figure.tight_layout()
-        self.canvas2.draw()
+        try:
+            if self.canvas2 and hasattr(self.canvas2, 'figure') and self.canvas2.figure:
+                self.canvas2.figure.tight_layout()
+                self.canvas2.draw()
+        except Exception as e:
+            print(f"Error finalizando gráfico productos: {e}")
 
         # Tab 3: Ganancias y pérdidas (resumen simple)
         if self._has_mpl and self.canvas3 is not None:
             try:
-                self.canvas3.figure.clear()
-                ax3 = self.canvas3.figure.add_subplot(111)
-            except Exception:
-                ax3 = self.canvas3.figure.subplots()
+                if hasattr(self.canvas3, 'figure') and self.canvas3.figure:
+                    self.canvas3.figure.clear()
+                    ax3 = self.canvas3.figure.add_subplot(111)
+                else:
+                    return
+            except Exception as e:
+                print(f"Error creando gráfico de ganancias: {e}")
+                return
 
             if not df_v.empty:
-                total_net = df_v['total'].sum()
+                total_net = df_v['total_venta'].sum()
                 total_gross = df_v['gross'].sum()
-                total_discount = df_v['descuento'].sum()
+                total_discount = df_v['descuento_venta'].sum()
                 labels = ['Bruto', 'Descuentos', 'Neto']
                 values = [total_gross, total_discount, total_net]
                 colors = ['#27ae60', '#e74c3c', '#3498db']
@@ -752,10 +770,11 @@ class ReportesFrame(QWidget):
                 self.table_gan.setColumnCount(0)
 
             try:
-                self.canvas3.figure.tight_layout()
-            except Exception:
-                pass
-            self.canvas3.draw()
+                if hasattr(self.canvas3, 'figure') and self.canvas3.figure:
+                    self.canvas3.figure.tight_layout()
+                    self.canvas3.draw()
+            except Exception as e:
+                print(f"Error dibujando gráfico ganancias: {e}")
         else:
             if getattr(self, 'placeholder3', None) is not None:
                 self.placeholder3.setText("Matplotlib no está instalado. Instala: pip install matplotlib")
@@ -809,9 +828,9 @@ class ReportesFrame(QWidget):
             if not hasattr(self, '_df_v') or self._df_v.empty:
                 df = pd.DataFrame()
             else:
-                total_net = self._df_v['total'].sum()
-                total_gross = (self._df_v['total'] + self._df_v['descuento']).sum()
-                total_discount = self._df_v['descuento'].sum()
+                total_net = self._df_v['total_venta'].sum()
+                total_gross = (self._df_v['total_venta'] + self._df_v['descuento_venta']).sum()
+                total_discount = self._df_v['descuento_venta'].sum()
                 df = pd.DataFrame([{'Bruto': total_gross, 'Descuentos': total_discount, 'Neto': total_net}])
             titulo = 'Ganancias y Pérdidas'
             default_name = 'ganancias_perdidas'

@@ -10,6 +10,7 @@ from shared.components.forms import ProductoForm, ImagenViewer
 from shared.helpers import formatear_precio
 from core.config import *
 
+# → Interfaz para gestionar el inventario de productos
 class InventarioFrame(QWidget):      
     def __init__(self, parent):
         super().__init__(parent)
@@ -80,7 +81,7 @@ class InventarioFrame(QWidget):
             }
         """)
         # Configurar tabla
-        columnas = ["ID", "Nombre", "Categoría", "Tipo de Corte", "Precio", "Stock", "Stock Mínimo"]
+        columnas = ["ID", "Nombre", "Categoría", "Tipo", "Precio", "Stock", "Stock Mín"]
         self.tabla.setColumnCount(len(columnas))
         self.tabla.setHorizontalHeaderLabels(columnas)
         
@@ -95,7 +96,7 @@ class InventarioFrame(QWidget):
         header.setStretchLastSection(True)
         
         # Configurar anchos específicos
-        anchos = [80, 400, 120, 130, 80, 80, 100]
+        anchos = [100, 550, 280, 100, 100, 80, 80]
         for i, ancho in enumerate(anchos):
             self.tabla.setColumnWidth(i, ancho)
         
@@ -157,21 +158,18 @@ class InventarioFrame(QWidget):
         btn.clicked.connect(comando)
         return btn
     
+# → darken_color es una función auxiliar para oscurecer colores
     def _darken_color(self, color, amount=20): #
-        """Oscurecer un color hexadecimal"""
         # Remover # si existe
         color = color.lstrip('#')
-        
         # Convertir a RGB
         r = int(color[0:2], 16)
         g = int(color[2:4], 16)
         b = int(color[4:6], 16)
-        
         # Oscurecer
         r = max(0, r - amount)
         g = max(0, g - amount)
         b = max(0, b - amount)
-        
         return f"#{r:02x}{g:02x}{b:02x}"
     
     def mostrarInventario(self):
@@ -197,8 +195,7 @@ class InventarioFrame(QWidget):
                 str(row.get("Tipo de Corte", "")),
                 precio, 
                 str(stock_actual), 
-                str(stock_minimo),
-                os.path.basename(str(row["Imagen"])) if pd.notna(row["Imagen"]) and str(row["Imagen"]).strip() else ""
+                str(stock_minimo)
             ]
             
             for col_idx, value in enumerate(values):
@@ -260,14 +257,17 @@ class InventarioFrame(QWidget):
             traceback.print_exc()
             self.img_viewer.limpiar()
     
+# → Detecta cambios en la selección de la tabla y actualiza la imagen mostrada
     def detectarCambioSeleccion(self, current, previous):
         print(f"-- Item actual cambió: {current}")
         self.mostrarImagen()
     
+# → Detecta selección de un ítem y actualiza la imagen mostrada
     def detectarSeleccion(self, item):
         print(f"-- Item clickeado: {item}")
         self.mostrarImagen()
     
+# → Agrega un nuevo producto al inventario
     def agregarProducto(self):
         try:
             print("-- Abriendo formulario agregar producto...")
@@ -281,6 +281,7 @@ class InventarioFrame(QWidget):
             import traceback
             traceback.print_exc()
     
+# → Modifica el producto seleccionado en el inventario
     def modificarProducto(self):
         current_row = self.tabla.currentRow()
         if current_row < 0:
@@ -322,6 +323,7 @@ class InventarioFrame(QWidget):
             import traceback
             traceback.print_exc()
     
+# → Elimina el producto seleccionado del inventario
     def eliminarProducto(self):
         current_row = self.tabla.currentRow()
         if current_row < 0:
@@ -347,6 +349,7 @@ class InventarioFrame(QWidget):
             else:
                 QMessageBox.critical(self, "Error", "No se pudo eliminar el producto.")
 
+# → Formulario base para agregar/modificar productos
 class AgregarProductoForm(ProductoForm):    
     def __init__(self, parent):
         self.parent_frame = parent
@@ -365,7 +368,7 @@ class AgregarProductoForm(ProductoForm):
         except Exception as e:
             QMessageBox.critical(self, "Error al guardar", f"Error: {e}")
 
-
+# → Formulario para modificar productos existentes
 class ModificarProductoForm(ProductoForm):
     def __init__(self, parent, prod_id, prod_nombre, prod_precio, prod_stock, prod_categoria):
         # La clase base creará todos los widgets y el diccionario 'self.entries'.

@@ -1,108 +1,174 @@
-## Modelo para manejar los datos de empleados - SQLite
+## Modelo de Empleados - Sistema Minimarket
+## Responsabilidad: Solo acceso a datos (CRUD)
 
-import bcrypt
-from core.base_model import BaseModel
+import pandas as pd
+from core.database import db
 
-class EmpleadoModel(BaseModel):
-    def __init__(self):
-        # Definir columnas de la tabla empleados
-        columns = ['id', 'nombre', 'apellido', 'usuario', 'contraseña', 'rol', 'activo']
-        super().__init__('empleados', columns)
+# → Modelo de datos para empleados: Realiza operaciones CRUD en la BD.
+class EmpleadoModel:
 
-    # Valida credenciales usando bcrypt para comparar contraseñas encriptadas
-    def validar_credenciales(self, usuario, password):
+# → Inserta un nuevo empleado    
+    def crear_empleado(self, nombre_empleado, apellido_empleado, id_rol, estado_empleado='activo'):
+        conexion = db.get_connection()
+        cursor = conexion.cursor()
+        
+        cursor.execute('''
+            INSERT INTO empleado (nombre_empleado, apellido_empleado, estado_empleado, id_rol)
+            VALUES (?, ?, ?, ?)
+        ''', (nombre_empleado, apellido_empleado, estado_empleado, id_rol))
+        
+        empleado_id = cursor.lastrowid
+        conexion.commit()
+        conexion.close()
+        return empleado_id
+    
+# → Obtiene un empleado por su ID.
+    def obtener_empleado_por_id(self, id_empleado):
         try:
-            # Obtener el empleado por usuario
-            empleados = self.get_all("usuario = ? AND activo = 1", (usuario,))
-            if not empleados:
-                return False
-            # Obtener la contraseña encriptada de la base de datos (get_all retorna diccionarios)
-            empleado = empleados[0]
-            hashed_password = empleado['contraseña']  # Acceder por nombre de columna
-            # Si es bytes, usar directamente; si es string, codificar
-            if isinstance(hashed_password, str):
-                hashed_password = hashed_password.encode('utf-8')
+            conexion = db.get_connection()
+            cursor = conexion.cursor()
             
-            # Verificar contraseña con bcrypt
-            return bcrypt.checkpw(password.encode('utf-8'), hashed_password)
+            cursor.execute('''
+                SELECT e.id_empleado, e.nombre_empleado, e.apellido_empleado, 
+                       e.estado_empleado, e.fecha_contratacion, e.id_rol, r.nombre_rol
+                FROM empleado e
+                JOIN rol r ON e.id_rol = r.id_rol
+                WHERE e.id_empleado = ?
+            ''', [id_empleado])
             
-        except Exception as e:
-            print(f"Error validando credenciales: {e}")
-            return False
-
-    def obtenerUsuario(self, usuario):
-        try:
-            empleados = self.get_all("usuario = ? AND activo = 1", (usuario,))
-            return empleados[0] if empleados else None
-        except Exception as e:
-            print(f"Error obteniendo empleado por usuario: {e}")
+            empleado = cursor.fetchone()
+            conexion.close()
+            
+            if empleado:
+                return {
+                    'id_empleado': empleado[0],
+                    'nombre_empleado': empleado[1],
+                    'apellido_empleado': empleado[2],
+                    'estado_empleado': empleado[3],
+                    'fecha_contratacion': empleado[4],
+                    'id_rol': empleado[5],
+                    'nombre_rol': empleado[6]
+                }
             return None
-    
-    def crear_empleado(self, nombre, apellido, usuario, contraseña, rol='empleado'):
-        """Crea un empleado con contraseña encriptada"""
-        try:
-            # Verificar que el usuario no exista
-            if self.obtenerUsuario(usuario):
-                raise ValueError(f"El usuario '{usuario}' ya existe")
             
-            # Encriptar la contraseña antes de guardar
-            hashed_password = bcrypt.hashpw(contraseña.encode('utf-8'), bcrypt.gensalt())
-            
-            empleado_data = {
-                'nombre': nombre,
-                'apellido': apellido,
-                'usuario': usuario,
-                'contraseña': hashed_password,  # Guardar la contraseña encriptada
-                'rol': rol,
-                'activo': 1
-            }
-            
-            return self.crearRegistro(empleado_data)
         except Exception as e:
-            print(f"Error creando empleado: {e}")
-            raise
-    
-    def actualizarEmpleado(self, empleado_id, datos):
-        """Actualiza un empleado. Si se actualiza la contraseña, la encripta"""
+            print(f"Error obteniendo empleado: {e}")
+            return None
+
+# → Obtiene todos los empleados activos.
+    def obtener_empleados_activos(self):
         try:
-            # Si se está actualizando la contraseña, encriptarla
-            if 'contraseña' in datos and datos['contraseña']:
-                datos['contraseña'] = bcrypt.hashpw(
-                    datos['contraseña'].encode('utf-8'), 
-                    bcrypt.gensalt()
-                )
+            conexion = db.get_connection()
+            empleados = pd.read_sql_query('''
+                SELECT e.id_empleado, e.nombre_empleado, e.apellido_empleado, 
+                       e.estado_empleado, e.fecha_contratacion, e.id_rol, r.nombre_rol
+                FROM empleado e
+                JOIN rol r ON e.id_rol = r.id_rol
+                WHERE e.estado_empleado = 'activo'
+                ORDER BY e.nombre_empleado, e.apellido_empleado
+            ''', conexion)
+            conexion.close()
+            return empleados.to_dict('records')
             
-            return self.actualizarRegistroID(empleado_id, datos)
-        except Exception as e:
-            print(f"Error actualizando empleado: {e}")
-            raise
-    
-    def desactivarEmpleado(self, empleado_id):
-        try:
-            return self.actualizarRegistroID(empleado_id, {'activo': 0})
-        except Exception as e:
-            print(f"Error desactivando empleado: {e}")
-            return False
-    
-    def obtenerEmpleadosActivos(self):
-        try:
-            return self.get_all("activo = 1")
         except Exception as e:
             print(f"Error obteniendo empleados activos: {e}")
             return []
     
-    def obtenerEmpleadosInactivos(self):
+# → Obtiene todos los empleados inactivos.
+    def obtener_empleados_inactivos(self):
         try:
-            return self.get_all("activo = 0")
+            conexion = db.get_connection()
+            empleados = pd.read_sql_query('''
+                SELECT e.id_empleado, e.nombre_empleado, e.apellido_empleado, 
+                       e.estado_empleado, e.fecha_contratacion, e.id_rol, r.nombre_rol
+                FROM empleado e
+                JOIN rol r ON e.id_rol = r.id_rol
+                WHERE e.estado_empleado = 'inactivo'
+                ORDER BY e.nombre_empleado, e.apellido_empleado
+            ''', conexion)
+            conexion.close()
+            return empleados.to_dict('records')
+            
         except Exception as e:
             print(f"Error obteniendo empleados inactivos: {e}")
             return []
-
-
-    def get_by_id(self, empleado_id):
-        """Obtener empleado por ID"""
+    
+# → Obtiene todos los empleados (activos e inactivos).
+    def obtener_todos_empleados(self):
         try:
-            return self.obtenerRegistro(empleado_id)
+            conexion = db.get_connection()
+            empleados = pd.read_sql_query('''
+                SELECT e.id_empleado, e.nombre_empleado, e.apellido_empleado, 
+                       e.estado_empleado, e.fecha_contratacion, e.id_rol, r.nombre_rol
+                FROM empleado e
+                JOIN rol r ON e.id_rol = r.id_rol
+                ORDER BY e.estado_empleado DESC, e.nombre_empleado, e.apellido_empleado
+            ''', conexion)
+            conexion.close()
+            return empleados.to_dict('records')
+            
         except Exception as e:
-            print(f"Error obteniendo empleado por ID: {e}")
-            return None
+            print(f"Error obteniendo empleados: {e}")
+            return []
+    
+# → Actualiza los datos de un empleado existente.
+    def actualizar_empleado(self, id_empleado, nombre_empleado=None, apellido_empleado=None, 
+                           id_rol=None, estado_empleado=None):
+        try:
+            conexion = db.get_connection()
+            cursor = conexion.cursor()
+            
+            updates = []
+            params = []
+            
+            if nombre_empleado is not None:
+                updates.append("nombre_empleado = ?")
+                params.append(nombre_empleado)
+            if apellido_empleado is not None:
+                updates.append("apellido_empleado = ?")
+                params.append(apellido_empleado)
+            if id_rol is not None:
+                updates.append("id_rol = ?")
+                params.append(id_rol)
+            if estado_empleado is not None:
+                updates.append("estado_empleado = ?")
+                params.append(estado_empleado)
+            
+            if not updates:
+                return True
+            
+            params.append(id_empleado)
+            query = f"UPDATE empleado SET {', '.join(updates)} WHERE id_empleado = ?"
+            
+            cursor.execute(query, params)
+            conexion.commit()
+            conexion.close()
+            return True
+            
+        except Exception as e:
+            print(f"Error actualizando empleado: {e}")
+            return False
+    
+# → Cambia el estado de un empleado (activo/inactivo).
+    def desactivar_empleado(self, id_empleado):
+        return self.actualizar_empleado(id_empleado, estado_empleado='inactivo')
+    
+# → Marca un empleado como activo.
+    def activar_empleado(self, id_empleado):
+        return self.actualizar_empleado(id_empleado, estado_empleado='activo')
+    
+# → Elimina permanentemente un empleado.
+    def eliminar_empleado(self, id_empleado):
+        try:
+            conexion = db.get_connection()
+            cursor = conexion.cursor()
+            
+            cursor.execute('DELETE FROM empleado WHERE id_empleado = ?', [id_empleado])
+            
+            conexion.commit()
+            conexion.close()
+            return True
+            
+        except Exception as e:
+            print(f"Error eliminando empleado: {e}")
+            return False

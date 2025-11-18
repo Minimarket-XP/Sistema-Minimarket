@@ -6,8 +6,12 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QLineEdit, QMessageBox, QFrame, 
 =======
                              QLineEdit, QSpinBox, QMessageBox, QFrame, 
+<<<<<<< HEAD
 >>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
                              QAbstractItemView, QHeaderView, QInputDialog)
+=======
+                             QAbstractItemView, QHeaderView)
+>>>>>>> 55cce56 (refactoring)
 from PyQt5.QtCore import Qt
 <<<<<<< HEAD:views/ventas.py
 from views.settings import *
@@ -19,14 +23,17 @@ from views.inventario import TablaNoEditable
 =======
 from core.config import *
 from modules.productos.models.producto_model import ProductoModel
-from modules.ventas.models.venta_model import VentaModel
+from modules.ventas.service.venta_service import VentaService
 from shared.helpers import formatear_precio
+<<<<<<< HEAD
 <<<<<<< HEAD:modules/ventas/venta_view.py
 from modules.ventas.descuentos import AplicarDescuento
 from modules.productos.inventario_view import TablaNoEditable
 >>>>>>> 51bcbc5 (feat: Preparación de la estructura para el Sprint 2 XP - archivos base):modules/ventas/venta_view.py
 =======
 from modules.ventas.service.descuentos_service import AplicarDescuento
+=======
+>>>>>>> 55cce56 (refactoring)
 from modules.productos.view.inventario_view import TablaNoEditable
 >>>>>>> 19c5efe (refactor(modules/ventas): reorganizar MVC):modules/ventas/view/venta_view.py
 import pandas as pd
@@ -36,9 +43,10 @@ class VentasFrame(QWidget):
         super().__init__(parent)
         
         self.producto_model = ProductoModel()
-        self.venta_model = VentaModel()
+        self.venta_service = VentaService()  # Usar Service en vez de Model
         self.carrito = []  # Lista de productos en el carrito
         self.total = 0.0
+<<<<<<< HEAD
 <<<<<<< HEAD
         self.descuento_aplicado = 0.0  # monto total descontado
         self.descuento_pct = 0.0
@@ -48,6 +56,8 @@ class VentasFrame(QWidget):
         self.descuento_pct = 0.0
         self.descuento_tipo = ""
 >>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
+=======
+>>>>>>> 55cce56 (refactoring)
         
         self.crearInterfaz()
         self.cargarProductos()
@@ -231,49 +241,6 @@ class VentasFrame(QWidget):
         
         right_layout.addWidget(self.tabla_carrito)
 
-        # Área de descuento: solo botón de opciones (eliminar input % global)
-        discount_layout = QHBoxLayout()
-        discount_layout.addStretch()
-
-        btn_descuento = QPushButton("Aplicar Descuento")
-        btn_descuento.clicked.connect(self.abrir_dialogo_aplicar_descuento)
-        discount_layout.addWidget(btn_descuento)
-
-        btn_deshacer = QPushButton("Deshacer Descuento")
-        btn_deshacer.clicked.connect(self.deshacer_descuento)
-        discount_layout.addWidget(btn_deshacer)
-        btn_descuento.setStyleSheet("""
-            QPushButton {
-                background-color: #ff9800;
-                color: white;
-                border: none;
-                padding: 10px 20px;
-                font-size: 13px;
-                font-weight: bold;
-                border-radius: 5px;
-            }
-            QPushButton:hover {
-                background-color: #e68900;
-            }
-        """)
-
-        btn_deshacer.setStyleSheet("""
-            QPushButton {
-                background-color: #6c757d;
-                color: white;
-                border: none;
-                padding: 10px 20px;
-                font-size: 13px;
-                font-weight: bold;
-                border-radius: 5px;
-            }
-            QPushButton:hover {
-                background-color: #5a6268;
-            }
-        """)
-
-        right_layout.addLayout(discount_layout)
-
         # Total
         self.label_total = QLabel("Total: S/ 0.00")
         self.label_total.setStyleSheet(f"""
@@ -333,7 +300,7 @@ class VentasFrame(QWidget):
         main_layout.addLayout(panels_layout)
     
     def crearInfoDia(self):
-        resumen = self.venta_model.obtener_resumen_dia()
+        resumen = self.venta_service.obtener_resumen_dia()  # Usar service
         
         info_frame = QFrame()
         info_frame.setStyleSheet("background-color: #ecf0f1; border-radius: 5px; padding: 10px;")
@@ -485,6 +452,7 @@ class VentasFrame(QWidget):
             self.tabla_carrito.setItem(row_idx, 1, QTableWidgetItem(str(item["cantidad"])))
             self.tabla_carrito.setItem(row_idx, 2, QTableWidgetItem(formatear_precio(item["precio"])))
 <<<<<<< HEAD
+<<<<<<< HEAD
             # Mostrar total (puede haber sido ajustado por descuentos)
             self.tabla_carrito.setItem(row_idx, 3, QTableWidgetItem(formatear_precio(item.get("total", item.get('base_total', 0)))))
             
@@ -493,10 +461,16 @@ class VentasFrame(QWidget):
 
 >>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
             # Acciones: botón de descuento por producto + remover
+=======
+            self.tabla_carrito.setItem(row_idx, 3, QTableWidgetItem(formatear_precio(item.get("total", 0))))
+
+            # Acciones: solo botón remover
+>>>>>>> 55cce56 (refactoring)
             action_widget = QWidget()
             action_layout = QHBoxLayout(action_widget)
             action_layout.setContentsMargins(0, 0, 0, 0)
 
+<<<<<<< HEAD
             btn_desc_line = QPushButton("D")
             btn_desc_line.setStyleSheet(f"""
                 QPushButton {{
@@ -516,6 +490,8 @@ class VentasFrame(QWidget):
 
 <<<<<<< HEAD
 =======
+=======
+>>>>>>> 55cce56 (refactoring)
             # Botón remover
 >>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
             btn_remover = QPushButton("🗑️")
@@ -541,6 +517,7 @@ class VentasFrame(QWidget):
 =======
             action_widget.setLayout(action_layout)
             self.tabla_carrito.setCellWidget(row_idx, 4, action_widget)
+<<<<<<< HEAD
 >>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
             self.total += float(item.get("total", item.get('base_total', 0)))
 
@@ -669,6 +646,12 @@ class VentasFrame(QWidget):
         except Exception as e:
             QMessageBox.warning(self, "Error descuento", str(e))
     
+=======
+            self.total += float(item.get("total", 0))
+
+        self.label_total.setText(f"Total: {formatear_precio(self.total)}")
+
+>>>>>>> 55cce56 (refactoring)
     def removerCarrito(self, indice):
         if 0 <= indice < len(self.carrito):
             producto_removido = self.carrito.pop(indice)
@@ -692,14 +675,11 @@ class VentasFrame(QWidget):
                                    QMessageBox.Yes | QMessageBox.No)
         
         if reply == QMessageBox.Yes:
-            # Procesar la venta usando el modelo
-            success, venta_id, mensaje = self.venta_model.procesar_venta(
+            # Procesar la venta usando el SERVICE (lógica de negocio)
+            success, venta_id, mensaje = self.venta_service.procesar_venta_completa(
                 carrito=self.carrito,
-                empleado="Admin",  # Por ahora usamos Admin por defecto
-                metodo_pago="efectivo",
-                descuento_total=self.descuento_aplicado,
-                descuento_pct=self.descuento_pct,
-                descuento_tipo=self.descuento_tipo
+                empleado_id=1,  # Por ahora usamos empleado 1 por defecto
+                metodo_pago="efectivo"
             )
             
             if success:

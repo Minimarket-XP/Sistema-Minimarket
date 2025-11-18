@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap, QFont
 from core.config import *
-from shared.helpers import cargar_categorias, cargar_tipos_corte, validar_numero
+from shared.helpers import cargar_categorias, cargar_tipos_corte, cargar_tipos_productos, cargar_unidades_medida, validar_numero
 
 class ProductoForm(QDialog):    
     def __init__(self, parent, title="Producto", producto_data=None):
@@ -116,7 +116,7 @@ class ProductoForm(QDialog):
         
         return entry
     
-    def _crear_comboboxes(self, main_layout): # → Crea comboboxes de categoría y tipo de cortes
+    def _crear_comboboxes(self, main_layout): # → Crea comboboxes de categoría, tipo y unidad
         # Categoría
         categoria_layout = QHBoxLayout()
         categoria_label = QLabel("Categoría:")
@@ -134,7 +134,35 @@ class ProductoForm(QDialog):
         categoria_layout.addWidget(btn_nueva_categoria)
         main_layout.addLayout(categoria_layout)
         
-        # Tipo de corte
+        # Tipo de producto
+        tipo_layout = QHBoxLayout()
+        tipo_label = QLabel("Tipo:")
+        tipo_label.setFixedWidth(100)
+        tipo_label.setStyleSheet("font-weight: bold; color: #333;")
+
+        self.tipo_cb = QComboBox()
+        self.tipo_cb.addItems(cargar_tipos_productos())
+        self.tipo_cb.setStyleSheet(self._get_combobox_style())
+        
+        tipo_layout.addWidget(tipo_label)
+        tipo_layout.addWidget(self.tipo_cb)
+        main_layout.addLayout(tipo_layout)
+        
+        # Unidad de medida
+        unidad_layout = QHBoxLayout()
+        unidad_label = QLabel("Unidad:")
+        unidad_label.setFixedWidth(100)
+        unidad_label.setStyleSheet("font-weight: bold; color: #333;")
+
+        self.unidad_cb = QComboBox()
+        self.unidad_cb.addItems(cargar_unidades_medida())
+        self.unidad_cb.setStyleSheet(self._get_combobox_style())
+        
+        unidad_layout.addWidget(unidad_label)
+        unidad_layout.addWidget(self.unidad_cb)
+        main_layout.addLayout(unidad_layout)
+        
+        # Tipo de corte (opcional para carnes)
         corte_layout = QHBoxLayout()
         self.corte_label = QLabel("Tipo de Corte:")
         self.corte_label.setFixedWidth(100)

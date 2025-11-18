@@ -269,15 +269,14 @@ class LoginVentana(QMainWindow):
             self.password_entry.clear()
             self.password_entry.setFocus()
     
-    def validarCredenciales(self, usuario, password):
+    def validarCredenciales(self, username, password):
         try:
-            from modules.empleados.empleado_model import EmpleadoModel
-            empleado_model = EmpleadoModel()
-            return empleado_model.validar_credenciales(usuario, password)
+            from modules.seguridad.services.auth_service import AuthService
+            auth_service = AuthService()
+            return auth_service.validar_credenciales(username, password)
         except Exception as e:
             print(f"Error validando credenciales: {e}")
-            # Credenciales por defecto si hay error
-            return usuario == "admin" and password == "admin"
+            return False
     
     def abrirDashboard(self):
         self.hide()
