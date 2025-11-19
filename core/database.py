@@ -20,7 +20,6 @@ class Database:
         conn.text_factory = lambda x: str(x, 'utf-8', 'replace') if isinstance(x, bytes) else x
         return conn
 
-
     def init_database(self): # Inicializa la base de datos y crea tablas si no existen
         try:
             # conn = conexión
