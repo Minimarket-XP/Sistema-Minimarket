@@ -3,7 +3,7 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                              QPushButton, QTableWidget, QTableWidgetItem, 
                              QLineEdit, QSpinBox, QMessageBox, QFrame, 
-                             QAbstractItemView, QHeaderView)
+                             QAbstractItemView, QHeaderView, QDialog, QDialogButtonBox)
 from PyQt5.QtCore import Qt
 from core.config import *
 from modules.productos.models.producto_model import ProductoModel
@@ -11,6 +11,7 @@ from modules.ventas.service.venta_service import VentaService
 from shared.helpers import formatear_precio
 from modules.productos.view.inventario_view import TablaNoEditable
 import pandas as pd
+from modules.productos.models.unidad_medida_model import UnidadMedidaModel
 
 class VentasFrame(QWidget):
     def __init__(self, parent):
@@ -36,9 +37,9 @@ class VentasFrame(QWidget):
         titulo.setStyleSheet(f"""
             QLabel {{
                 color: {THEME_COLOR};
-                font-size: 22px;
+                font-size: 28px;
                 font-weight: bold;
-                font-family: Arial;
+                font-family: Roboto;
                 margin-bottom: 10px;
             }}
         """)
@@ -58,18 +59,28 @@ class VentasFrame(QWidget):
         # Búsqueda
         search_layout = QHBoxLayout()
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 Buscar producto...")
+        self.search_input.setPlaceholderText("Buscar producto...")
         self.search_input.setStyleSheet("""
             QLineEdit {
                 padding: 8px;
                 border: 1px solid #ddd;
                 border-radius: 4px;
-                font-size: 15px;
+                font-size: 17px;
             }
         """)
         self.search_input.textChanged.connect(self.buscarProducto)
         
-        btn_limpiar = QPushButton("🗑️")
+        btn_limpiar = QPushButton("🧹")
+        btn_limpiar.setStyleSheet("""
+            QPushButton {
+                background-color: #0061fc;
+                color: white;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #260805;
+            }
+        """)
         btn_limpiar.setFixedSize(45, 45)
         btn_limpiar.clicked.connect(self.limpiarBusqueda)
         
@@ -125,18 +136,18 @@ class VentasFrame(QWidget):
         self.tabla_productos.setColumnCount(len(columnas))
         self.tabla_productos.setHorizontalHeaderLabels(columnas)
         
-        # Configurar selección - igual que inventario
+        # Configurar selección
         self.tabla_productos.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.tabla_productos.setSelectionMode(QAbstractItemView.SingleSelection)
         self.tabla_productos.setAlternatingRowColors(True)
         self.tabla_productos.setFocusPolicy(Qt.NoFocus)
 
-        # Ajustar tamaños de columna - IGUAL QUE INVENTARIO
+        # Ajustar tamaños de columna
         header = self.tabla_productos.horizontalHeader()
         header.setStretchLastSection(True)
         
-        # Configurar anchos específicos como en inventario
-        anchos = [80, 600, 80, 80, 80]  # ID, Nombre, Precio, Stock, Acción
+        # Configurar anchos específicos
+        anchos = [100, 560, 80, 80, 80]  # ID, Nombre, Precio, Stock, Acción
         for i, ancho in enumerate(anchos):
             self.tabla_productos.setColumnWidth(i, ancho)
         
@@ -149,13 +160,13 @@ class VentasFrame(QWidget):
         
         # Título del carrito
         titulo_carrito = QLabel("🛒 Carrito de Compras")
-        titulo_carrito.setStyleSheet(f"color: {THEME_COLOR}; font-size: 18px; font-weight: bold; margin-bottom: 10px;")
+        titulo_carrito.setStyleSheet(f"qproperty-alignment: 'AlignCenter'; color: {THEME_COLOR}; font-size: 22px; font-weight: bold; margin-bottom: 10px;")
         right_layout.addWidget(titulo_carrito)
         
         # Tabla del carrito - DIRECTAMENTE SIN PANEL
         self.tabla_carrito = TablaNoEditable()
         self.tabla_carrito.setColumnCount(5)
-        self.tabla_carrito.setHorizontalHeaderLabels(["Producto", "Cant.", "Precio", "Total", "Acción"])
+        self.tabla_carrito.setHorizontalHeaderLabels(["Producto", "Cant.", "Precio", "Total", "Acción"]) 
         self.tabla_carrito.setStyleSheet("""
             QTableWidget {
                 background-color: white;
@@ -196,13 +207,13 @@ class VentasFrame(QWidget):
                 border-radius: 6px;
             }
         """)
-
+        
         anchosC = [243, 57, 69, 85, 58]  # Producto, Cant., Precio, Total, Acción
         for i, anchoC in enumerate(anchosC):
             self.tabla_carrito.setColumnWidth(i, anchoC)
         
         right_layout.addWidget(self.tabla_carrito)
-
+        right_layout.setAlignment(Qt.AlignRight)
         # Total
         self.label_total = QLabel("Total: S/ 0.00")
         self.label_total.setStyleSheet(f"""
@@ -220,14 +231,14 @@ class VentasFrame(QWidget):
         right_layout.addWidget(self.label_total)
         
         # Botones del carrito
-        btn_procesar = QPushButton("💳 Procesar Venta")
+        btn_procesar = QPushButton("Procesar Venta")
         btn_procesar.setStyleSheet(f"""
             QPushButton {{
                 background-color: {SUCCESS_COLOR};
                 color: white;
                 border: none;
                 padding: 12px;
-                font-size: 14px;
+                font-size: 18px;
                 font-weight: bold;
                 border-radius: 5px;
             }}
@@ -237,14 +248,14 @@ class VentasFrame(QWidget):
         """)
         btn_procesar.clicked.connect(self.procesarVenta)
         
-        btn_limpiar = QPushButton("🗑️ Limpiar Carrito")
+        btn_limpiar = QPushButton("Limpiar Carrito")
         btn_limpiar.setStyleSheet(f"""
             QPushButton {{
                 background-color: {WARNING_COLOR};
                 color: white;
                 border: none;
                 padding: 10px;
-                font-size: 12px;
+                font-size: 16px;
                 font-weight: bold;
                 border-radius: 5px;
             }}
@@ -269,18 +280,18 @@ class VentasFrame(QWidget):
         
         info_layout = QHBoxLayout(info_frame)
         
-        titulo = QLabel("📦 Productos Disponibles")
-        titulo.setStyleSheet(f"color: {THEME_COLOR}; font-size: 18px; font-weight: bold;")
+        titulo = QLabel("Productos Disponibles")
+        titulo.setStyleSheet(f"color: {THEME_COLOR}; font-size: 22px; font-weight: bold;")
         info_layout.addWidget(titulo)
         info_layout.addStretch()
         
-        ventas_label = QLabel(f"📊 Ventas hoy: {resumen['total_ventas']}")
-        ventas_label.setStyleSheet("font-weight: bold; color: #2c3e50;")
+        ventas_label = QLabel(f"Ventas hoy: {resumen['total_ventas']}")
+        ventas_label.setStyleSheet("font-size: 15 px; font-weight: bold; color: #2c3e50;")
         info_layout.addWidget(ventas_label)
 
         # Total del día
         total_label = QLabel(f"💰 Total: {formatear_precio(resumen['monto_total'])}")
-        total_label.setStyleSheet("font-weight: bold; color: #27ae60;")
+        total_label.setStyleSheet("font-size: 15px; font-weight: bold; color: #27ae60;")
         info_layout.addWidget(total_label)
         
         return info_frame
@@ -313,7 +324,7 @@ class VentasFrame(QWidget):
             
             # Stock
             self.tabla_productos.setItem(row_idx, 3, QTableWidgetItem(str(stock)))
-            
+
             # Botón agregar
             btn_agregar = QPushButton("➕")
             btn_agregar.setStyleSheet(f"""
@@ -330,7 +341,7 @@ class VentasFrame(QWidget):
             """)
             btn_agregar.clicked.connect(lambda checked, r=row: self.agregarCarrito(r))
             self.tabla_productos.setCellWidget(row_idx, 4, btn_agregar)
-    
+
     def buscarProducto(self, texto):
         if not texto.strip():
             self.cargarProductos()
@@ -365,32 +376,164 @@ class VentasFrame(QWidget):
         self.cargarProductos()
     
     def agregarCarrito(self, producto):
-        producto_id = str(producto["ID"])
+        id_producto = str(producto["ID"])
         nombre = str(producto["Nombre"])
         precio = float(producto["Precio"])
+        stock = float(producto["Stock"]) if pd.notna(producto["Stock"]) else 0  # Stock en kg
+        id_unidad = str(producto["id_unidad_medida"])
         
+        # Obtener información de unidad de medida
+        unidad_model = UnidadMedidaModel()
+        unidad_info = unidad_model.obtener_por_id(id_unidad)
+        nombre_unidad = unidad_info['nombre_unidad'] if unidad_info else 'und'
+        es_peso = nombre_unidad.lower() in ['g', 'kg', 'gramos', 'kilogramos', 'gramo', 'kilogramo']
+       
+        # Obtener cantidad actual en carrito para este producto (siempre en kg)
+        cantidad_en_carrito = 0
+        for item in self.carrito:
+            if item["id"] == id_producto:
+                cantidad_en_carrito = item["cantidad"]
+                break
+        
+        # Calcular stock disponible (en kg)
+        stock_disponible = stock - cantidad_en_carrito
+        
+        if stock_disponible <= 0:
+            QMessageBox.warning(self, "Sin stock", 
+                              f"No hay stock disponible para '{nombre}'")
+            return
+        
+        # Mostrar diálogo para ingresar cantidad
+        cantidad_input = self.mostrarDialogoCantidad(id_unidad, nombre, stock_disponible, es_peso)
+        
+        if cantidad_input is None or cantidad_input <= 0:
+            return  # Usuario canceló o ingresó cantidad inválida
+        
+        # Convertir a kg si es producto por peso (viene en gramos del diálogo)
+        if es_peso:
+            cantidad_kg = cantidad_input / 1000.0  # Convertir gramos a kg
+            cantidad_display = cantidad_input  # Para mostrar en gramos
+        else:
+            cantidad_kg = cantidad_input  # Ya está en unidades
+            cantidad_display = cantidad_input
+        
+        # Verificar que no exceda el stock disponible (comparar en kg)
+        if cantidad_kg > stock_disponible:
+            if es_peso:
+                QMessageBox.warning(self, "Stock insuficiente",
+                                  f"Solo hay {stock_disponible * 1000:.0f}g disponibles de '{nombre}'")
+            else:
+                QMessageBox.warning(self, "Stock insuficiente",
+                                  f"Solo hay {stock_disponible:.0f} unidades disponibles de '{nombre}'")
+            return
+
         # Verificar si el producto ya está en el carrito
         for item in self.carrito:
-            if item["id"] == producto_id:
-                item["cantidad"] += 1
+            if item["id"] == id_producto:
+                item["cantidad"] += cantidad_kg  # Siempre almacenar en kg
                 item["base_total"] = item["cantidad"] * item["precio"]
                 item["total"] = item["base_total"]
                 break
         else:
-            # Agregar nuevo producto al carrito
+            # Agregar nuevo producto al carrito (cantidad siempre en kg)
             self.carrito.append({
-                "id": producto_id,
+                "id": id_producto,
                 "nombre": nombre,
-                "cantidad": 1,
+                "cantidad": cantidad_kg,
                 "precio": precio,
-                "base_total": precio,
-                "total": precio,
-                "descuento": None
+                "base_total": precio * cantidad_kg,
+                "total": precio * cantidad_kg,
+                "descuento": None,
+                "es_peso": es_peso  # Guardar si es producto por peso
             })
-        
+
         self.actualizarCarrito()
-        QMessageBox.information(self, "Producto agregado", f"'{nombre}' agregado al carrito")
+        
+        # Mensaje de confirmación
+        if es_peso:
+            QMessageBox.information(self, "Producto agregado", 
+                                  f"{cantidad_display:.0f}g de '{nombre}' agregado al carrito")
+        else:
+            QMessageBox.information(self, "Producto agregado", 
+                                  f"{cantidad_display:.0f} unidad(es) de '{nombre}' agregado(s) al carrito")
     
+# → Mostrar diálogo para ingresar cantidad según unidad de medida
+    def mostrarDialogoCantidad(self, id_unidad, nombre, stock_disponible, es_peso):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Cantidad de Producto")
+        dialog.setFixedSize(400, 220)
+        
+        layout = QVBoxLayout(dialog)
+        
+        # Mensaje
+        if es_peso:
+            mensaje = QLabel(f"Ingrese el peso de '{nombre}' (en gramos):")
+        else:
+            mensaje = QLabel(f"Ingrese la cantidad de '{nombre}':")
+        mensaje.setStyleSheet("font-size: 14px; margin-bottom: 10px;")
+        layout.addWidget(mensaje)
+        
+        # Stock disponible
+        if es_peso:
+            # Convertir stock de kg a gramos para mostrar
+            stock_gramos = stock_disponible * 1000
+            stock_label = QLabel(f"Stock disponible: {stock_gramos:.0f}g")
+        else:
+            stock_label = QLabel(f"Stock disponible: {stock_disponible:.0f} unidades")
+        stock_label.setStyleSheet("font-size: 12px; color: #7f8c8d; margin-bottom: 5px;")
+        layout.addWidget(stock_label)
+        
+        # INPUT de acuerdo al tipo de unidad
+        if es_peso:
+            # Para productos por peso: usar DoubleSpinBox - solo para los de gramos o kg
+            from PyQt5.QtWidgets import QDoubleSpinBox
+            spin_cantidad = QDoubleSpinBox()
+            spin_cantidad.setMinimum(100.0)  # Mínimo 100 gramos por pesaje
+            spin_cantidad.setMaximum(stock_disponible * 1000)  # Stock en gramos (o kilos? no sé)
+            spin_cantidad.setValue(100.0)
+            spin_cantidad.setSingleStep(50.0)  # Incrementos de 50g en 50g
+            spin_cantidad.setDecimals(2)
+            spin_cantidad.setSuffix(" g")
+            
+            # Mensaje de mínimo 
+            min_label = QLabel("Mínimo de venta: 100g - 0.1 kg")
+            min_label.setStyleSheet("font-size: 11px; color: #e74c3c; margin-bottom: 5px;")
+            layout.addWidget(min_label)
+        else:
+            # Para productos por unidad: usar SpinBox - es entero como botellas, latas, paks, etc
+            spin_cantidad = QSpinBox()
+            spin_cantidad.setMinimum(1)
+            spin_cantidad.setMaximum(int(stock_disponible))
+            spin_cantidad.setValue(1)
+        
+        spin_cantidad.setStyleSheet("""
+            QSpinBox, QDoubleSpinBox {
+                padding: 8px;
+                font-size: 16px;
+                border: 2px solid #3498db;
+                border-radius: 5px;
+            }
+        """)
+        layout.addWidget(spin_cantidad)
+        
+        # Botones
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.setStyleSheet("""
+            QPushButton {
+                padding: 8px 20px;
+                font-size: 14px;
+                border-radius: 5px;
+            }
+        """)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        
+        # Mostrar diálogo y retornar valor (en gramos si es peso, en unidades si no)
+        if dialog.exec_() == QDialog.Accepted:
+            return spin_cantidad.value()
+        return None
+
     def actualizarCarrito(self):
         self.tabla_carrito.setRowCount(len(self.carrito))
         self.total = 0.0
@@ -398,7 +541,14 @@ class VentasFrame(QWidget):
         # NOTE: descuentos se aplican sobre item['total'] que debe representar el estado actual
         for row_idx, item in enumerate(self.carrito):
             self.tabla_carrito.setItem(row_idx, 0, QTableWidgetItem(item["nombre"]))
-            self.tabla_carrito.setItem(row_idx, 1, QTableWidgetItem(str(item["cantidad"])))
+            
+            # Mostrar cantidad en gramos si es producto por peso, sino en unidades
+            if item.get("es_peso", False):
+                cantidad_display = f"{item['cantidad'] * 1000:.0f}g"  # Convertir kg a gramos
+            else:
+                cantidad_display = str(int(item["cantidad"]))
+            self.tabla_carrito.setItem(row_idx, 1, QTableWidgetItem(cantidad_display))
+            
             self.tabla_carrito.setItem(row_idx, 2, QTableWidgetItem(formatear_precio(item["precio"])))
             self.tabla_carrito.setItem(row_idx, 3, QTableWidgetItem(formatear_precio(item.get("total", 0))))
 
