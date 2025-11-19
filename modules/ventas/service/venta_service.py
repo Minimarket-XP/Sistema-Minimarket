@@ -119,5 +119,4 @@ class VentaService:
 
     # Alias para compatibilidad con código anterior
     def obtener_resumen_dia(self, fecha=None):
-        """Alias para compatibilidad."""
         return self.generar_resumen_dia(fecha)

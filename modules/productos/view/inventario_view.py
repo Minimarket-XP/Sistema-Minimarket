@@ -96,7 +96,7 @@ class InventarioFrame(QWidget):
         header.setStretchLastSection(True)
         
         # Configurar anchos específicos
-        anchos = [100, 550, 280, 100, 100, 80, 80]
+        anchos = [160, 550, 280, 100, 100, 80, 80]
         for i, ancho in enumerate(anchos):
             self.tabla.setColumnWidth(i, ancho)
         

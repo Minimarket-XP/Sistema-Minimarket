@@ -61,7 +61,7 @@ class ProductoModel(BaseModel):
             query = '''
                 SELECT p.id_producto, p.nombre_producto, p.precio_producto, 
                        p.stock_producto, p.stock_minimo, p.tipo_corte, p.imagen,
-                       c.nombre_categoria, t.nombre_tipo, u.nombre_unidad
+                       c.nombre_categoria, t.nombre_tipo, u.nombre_unidad, p.id_unidad_medida
                 FROM productos p
                 LEFT JOIN categoria_productos c ON p.id_categoria_productos = c.id_categoria_productos
                 LEFT JOIN tipo_productos t ON p.id_tipo_productos = t.id_tipo_producto
@@ -74,7 +74,7 @@ class ProductoModel(BaseModel):
             if productos.empty:
                 return pd.DataFrame(columns=self.columnas)
             
-            # Mapear a formato esperado (sin Unidad para tabla de inventario)
+            # Mapear a formato esperado
             productos_mapeados = pd.DataFrame({
                 "ID": productos['id_producto'],
                 "Nombre": productos['nombre_producto'],
@@ -83,7 +83,9 @@ class ProductoModel(BaseModel):
                 "Precio": productos['precio_producto'],
                 "Stock": productos['stock_producto'],
                 "Stock Mínimo": productos['stock_minimo'],
-                "Imagen": productos['imagen'].fillna('')
+                "Imagen": productos['imagen'].fillna(''),
+                "Unidad": productos['nombre_unidad'].fillna('Sin unidad'),
+                "id_unidad_medida": productos['id_unidad_medida']
             })
             
             return productos_mapeados
@@ -94,7 +96,7 @@ class ProductoModel(BaseModel):
             return pd.DataFrame(columns=self.columnas)
 
 # → Obtiene un producto por su ID con detalles relacionados
-    def obtenerPorId(self, producto_id):
+    def obtenerPorId(self, id_producto):
         try:
             conexion = db.get_connection()
             query = '''
@@ -106,7 +108,7 @@ class ProductoModel(BaseModel):
                 LEFT JOIN tipo_productos t ON p.id_tipo_productos = t.id_tipo_producto
                 WHERE p.id_producto = ?
             '''
-            producto = pd.read_sql_query(query, conexion, params=[producto_id])
+            producto = pd.read_sql_query(query, conexion, params=[id_producto])
             conexion.close()
             
             if producto.empty:
@@ -195,21 +197,21 @@ class ProductoModel(BaseModel):
                 conexion.close()
             raise
     
-    def actualizarProducto(self, producto_id, datos):
+    def actualizarProducto(self, id_producto, datos):
         try:
             conexion = db.get_connection()
             cursor = conexion.cursor()
             
             # Verificar que el producto existe
-            cursor.execute("SELECT id_producto FROM productos WHERE id_producto = ?", [producto_id])
+            cursor.execute("SELECT id_producto FROM productos WHERE id_producto = ?", [id_producto])
             if not cursor.fetchone():
                 conexion.close()
-                raise ValueError(f"Producto con ID {producto_id} no encontrado")
+                raise ValueError(f"Producto con ID {id_producto} no encontrado")
             
             # Manejar imagen si se proporciona una nueva
             imagen_destino = None
             if datos.get("imagen_origen"):
-                imagen_destino = self.plagiarImagen(datos["imagen_origen"], producto_id)
+                imagen_destino = self.plagiarImagen(datos["imagen_origen"], id_producto)
 
             # Construir UPDATE dinámicamente
             updates = []
@@ -253,7 +255,7 @@ class ProductoModel(BaseModel):
                     params.append(tipo_row[0])
             
             if updates:
-                params.append(producto_id)
+                params.append(id_producto)
                 query = f"UPDATE productos SET {', '.join(updates)} WHERE id_producto = ?"
                 cursor.execute(query, params)
                 conexion.commit()
@@ -262,31 +264,31 @@ class ProductoModel(BaseModel):
             return True
             
         except Exception as e:
-            print(f"Error actualizando producto {producto_id}: {e}")
+            print(f"Error actualizando producto {id_producto}: {e}")
             if conexion:
                 conexion.close()
             raise
     
-    def eliminarProducto(self, producto_id):
+    def eliminarProducto(self, id_producto):
         try:
             conexion = db.get_connection()
             cursor = conexion.cursor()
-            cursor.execute("DELETE FROM productos WHERE id_producto = ?", [producto_id])
+            cursor.execute("DELETE FROM productos WHERE id_producto = ?", [id_producto])
             conexion.commit()
             rows_affected = cursor.rowcount
             conexion.close()
             return rows_affected > 0
         except Exception as e:
-            print(f"Error eliminando producto {producto_id}: {e}")
+            print(f"Error eliminando producto {id_producto}: {e}")
             return False
     
-    def plagiarImagen(self, origen, producto_id):
+    def plagiarImagen(self, origen, id_producto):
         try:
             if not os.path.exists(origen):
                 return ""
             
             extension = os.path.splitext(origen)[1]
-            destino = os.path.join(IMG_DIR, f"{producto_id}{extension}")
+            destino = os.path.join(IMG_DIR, f"{id_producto}{extension}")
             
             # Si ya existe la misma imagen, no copiar
             if os.path.exists(destino) and os.path.samefile(origen, destino):
@@ -311,10 +313,11 @@ class ProductoModel(BaseModel):
             query = '''
                 SELECT p.id_producto, p.nombre_producto, p.precio_producto, 
                        p.stock_producto, p.stock_minimo, p.tipo_corte, p.imagen,
-                       c.nombre_categoria, t.nombre_tipo
+                       c.nombre_categoria, t.nombre_tipo, u.nombre_unidad, p.id_unidad_medida
                 FROM productos p
                 LEFT JOIN categoria_productos c ON p.id_categoria_productos = c.id_categoria_productos
                 LEFT JOIN tipo_productos t ON p.id_tipo_productos = t.id_tipo_producto
+                LEFT JOIN unidad_medida u ON p.id_unidad_medida = u.id_unidad_medida
                 WHERE p.nombre_producto LIKE ? OR p.id_producto LIKE ? OR c.nombre_categoria LIKE ?
                 ORDER BY p.id_producto
             '''
@@ -334,7 +337,9 @@ class ProductoModel(BaseModel):
                 "Precio": productos['precio_producto'],
                 "Stock": productos['stock_producto'],
                 "Stock Mínimo": productos['stock_minimo'],
-                "Imagen": productos['imagen'].fillna('')
+                "Imagen": productos['imagen'].fillna(''),
+                "Unidad": productos['nombre_unidad'].fillna('Sin unidad'),
+                "id_unidad_medida": productos['id_unidad_medida']
             })
             
             return productos_mapeados
