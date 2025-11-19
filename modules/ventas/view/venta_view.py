@@ -2,44 +2,14 @@
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                              QPushButton, QTableWidget, QTableWidgetItem, 
-<<<<<<< HEAD
-                             QLineEdit, QMessageBox, QFrame, 
-=======
                              QLineEdit, QSpinBox, QMessageBox, QFrame, 
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
-                             QAbstractItemView, QHeaderView, QInputDialog)
-=======
-                             QAbstractItemView, QHeaderView)
->>>>>>> 55cce56 (refactoring)
-=======
                              QAbstractItemView, QHeaderView, QDialog, QDialogButtonBox)
->>>>>>> 573ec40 (feat (ventas): implementar venta - por peso o unidad)
 from PyQt5.QtCore import Qt
-<<<<<<< HEAD:views/ventas.py
-from views.settings import *
-from models.producto import ProductoModel
-from models.venta import VentaModel
-from models.helpers import formatear_precio
-from models.descuentos import AplicarDescuento
-from views.inventario import TablaNoEditable
-=======
 from core.config import *
 from modules.productos.models.producto_model import ProductoModel
 from modules.ventas.service.venta_service import VentaService
 from shared.helpers import formatear_precio
-<<<<<<< HEAD
-<<<<<<< HEAD:modules/ventas/venta_view.py
-from modules.ventas.descuentos import AplicarDescuento
-from modules.productos.inventario_view import TablaNoEditable
->>>>>>> 51bcbc5 (feat: Preparación de la estructura para el Sprint 2 XP - archivos base):modules/ventas/venta_view.py
-=======
-from modules.ventas.service.descuentos_service import AplicarDescuento
-=======
->>>>>>> 55cce56 (refactoring)
 from modules.productos.view.inventario_view import TablaNoEditable
->>>>>>> 19c5efe (refactor(modules/ventas): reorganizar MVC):modules/ventas/view/venta_view.py
 import pandas as pd
 from modules.productos.models.unidad_medida_model import UnidadMedidaModel
 
@@ -51,18 +21,6 @@ class VentasFrame(QWidget):
         self.venta_service = VentaService()  # Usar Service en vez de Model
         self.carrito = []  # Lista de productos en el carrito
         self.total = 0.0
-<<<<<<< HEAD
-<<<<<<< HEAD
-        self.descuento_aplicado = 0.0  # monto total descontado
-        self.descuento_pct = 0.0
-        self.descuento_tipo = ''
-=======
-        self.descuento_aplicado = 0.0
-        self.descuento_pct = 0.0
-        self.descuento_tipo = ""
->>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
-=======
->>>>>>> 55cce56 (refactoring)
         
         self.crearInterfaz()
         self.cargarProductos()
@@ -471,46 +429,22 @@ class VentasFrame(QWidget):
 
         # Verificar si el producto ya está en el carrito
         for item in self.carrito:
-<<<<<<< HEAD
-            if item["id"] == producto_id:
-                item["cantidad"] += 1
-<<<<<<< HEAD
-                item['base_total'] = item["cantidad"] * item["precio"]
-                item["total"] = item['base_total']
-=======
-=======
             if item["id"] == id_producto:
                 item["cantidad"] += cantidad_kg  # Siempre almacenar en kg
->>>>>>> 573ec40 (feat (ventas): implementar venta - por peso o unidad)
                 item["base_total"] = item["cantidad"] * item["precio"]
                 item["total"] = item["base_total"]
->>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
                 break
         else:
-<<<<<<< HEAD
-            # Agregar nuevo producto al carrito (mantener estructura simple: id, nombre, cantidad, precio, base_total, total)
-=======
             # Agregar nuevo producto al carrito (cantidad siempre en kg)
->>>>>>> 573ec40 (feat (ventas): implementar venta - por peso o unidad)
             self.carrito.append({
                 "id": id_producto,
                 "nombre": nombre,
                 "cantidad": cantidad_kg,
                 "precio": precio,
-<<<<<<< HEAD
-                "base_total": precio,
-                "total": precio,
-<<<<<<< HEAD
-                # descuento por línea (None si no aplica)
-=======
->>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
-                "descuento": None
-=======
                 "base_total": precio * cantidad_kg,
                 "total": precio * cantidad_kg,
                 "descuento": None,
                 "es_peso": es_peso  # Guardar si es producto por peso
->>>>>>> 573ec40 (feat (ventas): implementar venta - por peso o unidad)
             })
 
         self.actualizarCarrito()
@@ -605,10 +539,6 @@ class VentasFrame(QWidget):
         self.total = 0.0
         # Resetear descuento_aplicado temporal antes de cálculo (se actualizará si existe)
         # NOTE: descuentos se aplican sobre item['total'] que debe representar el estado actual
-<<<<<<< HEAD
-        
-=======
->>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
         for row_idx, item in enumerate(self.carrito):
             self.tabla_carrito.setItem(row_idx, 0, QTableWidgetItem(item["nombre"]))
             
@@ -620,49 +550,14 @@ class VentasFrame(QWidget):
             self.tabla_carrito.setItem(row_idx, 1, QTableWidgetItem(cantidad_display))
             
             self.tabla_carrito.setItem(row_idx, 2, QTableWidgetItem(formatear_precio(item["precio"])))
-<<<<<<< HEAD
-<<<<<<< HEAD
-            # Mostrar total (puede haber sido ajustado por descuentos)
-            self.tabla_carrito.setItem(row_idx, 3, QTableWidgetItem(formatear_precio(item.get("total", item.get('base_total', 0)))))
-            
-=======
-            self.tabla_carrito.setItem(row_idx, 3, QTableWidgetItem(formatear_precio(item.get("total", item.get("base_total", 0)))))
-
->>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
-            # Acciones: botón de descuento por producto + remover
-=======
             self.tabla_carrito.setItem(row_idx, 3, QTableWidgetItem(formatear_precio(item.get("total", 0))))
 
             # Acciones: solo botón remover
->>>>>>> 55cce56 (refactoring)
             action_widget = QWidget()
             action_layout = QHBoxLayout(action_widget)
             action_layout.setContentsMargins(0, 0, 0, 0)
 
-<<<<<<< HEAD
-            btn_desc_line = QPushButton("D")
-            btn_desc_line.setStyleSheet(f"""
-                QPushButton {{
-                    background-color: {INFO_COLOR};
-                    color: white;
-                    border: none;
-                    border-radius: 3px;
-                    font-weight: bold;
-                    padding: 4px;
-                }}
-                QPushButton:hover {{
-                    background-color: #2980b9;
-                }}
-            """)
-            btn_desc_line.clicked.connect(lambda checked, idx=row_idx: self.aplicar_descuento_item(idx))
-            action_layout.addWidget(btn_desc_line)
-
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 55cce56 (refactoring)
             # Botón remover
->>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
             btn_remover = QPushButton("🗑️")
             btn_remover.setStyleSheet(f"""
                 QPushButton {{
@@ -679,148 +574,12 @@ class VentasFrame(QWidget):
             """)
             btn_remover.clicked.connect(lambda checked, idx=row_idx: self.removerCarrito(idx))
             action_layout.addWidget(btn_remover)
-<<<<<<< HEAD
-
-            self.tabla_carrito.setCellWidget(row_idx, 4, action_widget)
-            
-=======
             action_widget.setLayout(action_layout)
             self.tabla_carrito.setCellWidget(row_idx, 4, action_widget)
-<<<<<<< HEAD
->>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
-            self.total += float(item.get("total", item.get('base_total', 0)))
-
-        # Mostrar total y monto de descuento si existe
-        if self.descuento_aplicado and float(self.descuento_aplicado) > 0:
-<<<<<<< HEAD
-            self.label_total.setText(f"Total: {formatear_precio(self.total)}  (Descuento: {formatear_precio(self.descuento_aplicado)})")
-=======
-            self.label_total.setText(
-                f"Total: {formatear_precio(self.total)}  (Descuento: {formatear_precio(self.descuento_aplicado)})")
->>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
-        else:
-            self.label_total.setText(f"Total: {formatear_precio(self.total)}")
-
-    def _reset_totals_to_base(self):
-        for item in self.carrito:
-            item['total'] = float(item.get('base_total', item.get('precio', 0) * item.get('cantidad', 1)))
-            # limpiar descuento por línea al resetear (None = no descuento por línea)
-            item['descuento'] = None
-
-<<<<<<< HEAD
-
-=======
->>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
-    def abrir_dialogo_aplicar_descuento(self):
-        opciones = ["Por producto", "Por total (%)", "Monto fijo"]
-        # El diálogo global ya no permite "Por producto"; esa opción se hizo por-fila.
-        opciones = ["Por total (%)", "Monto fijo"]
-        opcion, ok = QInputDialog.getItem(self, "Aplicar Descuento", "Selecciona opción:", opciones, 0, False)
-        if not ok or not opcion:
-            return
-
-        try:
-            if opcion == "Por total (%)":
-<<<<<<< HEAD
-                pct, ok = QInputDialog.getDouble(self, "Porcentaje total", "Ingrese porcentaje (0-100):", min=0, max=100, decimals=2)
-=======
-                pct, ok = QInputDialog.getDouble(self, "Porcentaje total", "Ingrese porcentaje (0-100):", min=0,
-                                                 max=100, decimals=2)
->>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
-                if not ok:
-                    return
-                self._reset_totals_to_base()
-                carrito, descuento = AplicarDescuento.aplicar_descuento_total(self.carrito, pct)
-                self.carrito = carrito
-                self.descuento_aplicado = descuento
-                self.descuento_pct = float(pct)
-                self.descuento_tipo = 'total_pct'
-
-            else:  # Monto fijo
-<<<<<<< HEAD
-                monto, ok = QInputDialog.getDouble(self, "Monto fijo", "Ingrese monto fijo a descontar:", min=0, decimals=2)
-=======
-                monto, ok = QInputDialog.getDouble(self, "Monto fijo", "Ingrese monto fijo a descontar:", min=0,
-                                                   decimals=2)
->>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
-                if not ok:
-                    return
-                self._reset_totals_to_base()
-                carrito, descuento = AplicarDescuento.aplicar_descuento_fijo(self.carrito, monto)
-                self.carrito = carrito
-                self.descuento_aplicado = descuento
-                self.descuento_pct = 0.0
-                self.descuento_tipo = 'fijo'
-
-            self.actualizarCarrito()
-
-        except Exception as e:
-            QMessageBox.warning(self, "Error al aplicar descuento", str(e))
-
-    def deshacer_descuento(self):
-        # Resetear totales a base y limpiar metadatos de descuento
-        self._reset_totals_to_base()
-        self.descuento_aplicado = 0.0
-        self.descuento_pct = 0.0
-        self.descuento_tipo = ''
-        self.actualizarCarrito()
-
-    def aplicar_descuento_item(self, indice):
-        """Abrir diálogo para aplicar descuento solo al producto en la fila 'indice'."""
-        if not (0 <= indice < len(self.carrito)):
-            return
-        item = self.carrito[indice]
-        opciones = ["Porcentaje", "Monto fijo"]
-        opcion, ok = QInputDialog.getItem(self, "Descuento por producto", "Tipo:", opciones, 0, False)
-        if not ok or not opcion:
-            return
-
-        try:
-            if opcion == "Porcentaje":
-<<<<<<< HEAD
-                pct, ok2 = QInputDialog.getDouble(self, "Porcentaje", "Ingrese porcentaje (0-100):", min=0, max=100, decimals=2)
-=======
-                pct, ok2 = QInputDialog.getDouble(self, "Porcentaje", "Ingrese porcentaje (0-100):", min=0, max=100,
-                                                  decimals=2)
->>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
-                if not ok2:
-                    return
-                carrito, descuento = AplicarDescuento.aplicar_descuento_producto(self.carrito, item['id'], pct)
-                self.carrito = carrito
-                self.descuento_aplicado = descuento
-                self.descuento_pct = float(pct)
-                self.descuento_tipo = 'producto'
-
-            else:  # Monto fijo sobre este producto
-<<<<<<< HEAD
-                monto, ok2 = QInputDialog.getDouble(self, "Monto fijo", "Ingrese monto fijo a descontar:", min=0, decimals=2)
-=======
-                monto, ok2 = QInputDialog.getDouble(self, "Monto fijo", "Ingrese monto fijo a descontar:", min=0,
-                                                    decimals=2)
->>>>>>> a690a5d (Fix: Significant improvements were made to modules and sharedfolder.)
-                if not ok2:
-                    return
-                base = float(item.get('base_total', item.get('precio', 0) * item.get('cantidad', 1)))
-                descuento = min(monto, base)
-                nuevo_total = round(max(base - descuento, 0.0), 2)
-                item['total'] = nuevo_total
-                item['descuento'] = round(descuento, 2)
-                # recalcular descuento total como suma de diferencias
-                total_desc = sum(float(it.get('descuento', 0.0) or 0.0) for it in self.carrito)
-                self.descuento_aplicado = round(total_desc, 2)
-                self.descuento_pct = 0.0
-                self.descuento_tipo = 'fijo_producto'
-
-            self.actualizarCarrito()
-        except Exception as e:
-            QMessageBox.warning(self, "Error descuento", str(e))
-    
-=======
             self.total += float(item.get("total", 0))
 
         self.label_total.setText(f"Total: {formatear_precio(self.total)}")
 
->>>>>>> 55cce56 (refactoring)
     def removerCarrito(self, indice):
         if 0 <= indice < len(self.carrito):
             producto_removido = self.carrito.pop(indice)
