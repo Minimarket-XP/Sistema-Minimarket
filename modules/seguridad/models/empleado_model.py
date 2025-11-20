@@ -22,6 +22,39 @@ class EmpleadoModel:
         conexion.close()
         return empleado_id
     
+
+# → Obtener al empleado por su rol 
+    def obtener_empleado_por_rol(self, nombre_rol):
+        try:
+            conexion = db.get_connection()
+            cursor = conexion.cursor()
+            cursor.execute('''
+                SELECT e.id_empleado, e.nombre_empleado, e.apellido_empleado,
+                          e.estado_empleado, e.fecha_contratacion, e.id_rol, r.nombre_rol
+                FROM empleado e
+                JOIN rol r ON e.id_rol = r.id_rol
+                WHERE r.nombre_rol = ?
+            ''', [nombre_rol])
+            
+            empleado = cursor.fetchall()
+            conexion.close()
+            
+            if empleado:
+                return [{
+                    'id_empleado': e[0],
+                    'nombre_empleado': e[1],
+                    'apellido_empleado': e[2],
+                    'estado_empleado': e[3],
+                    'fecha_contratacion': e[4],
+                    'id_rol': e[5],
+                    'nombre_rol': e[6]
+                } for e in empleado]
+            return None
+            
+        except Exception as e:
+            print(f"Error obteniendo empleado por rol: {e}")
+            return None
+
 # → Obtiene un empleado por su ID.
     def obtener_empleado_por_id(self, id_empleado):
         try:
@@ -65,7 +98,7 @@ class EmpleadoModel:
                 FROM empleado e
                 JOIN rol r ON e.id_rol = r.id_rol
                 WHERE e.estado_empleado = 'activo'
-                ORDER BY e.nombre_empleado, e.apellido_empleado
+                ORDER BY e.id_empleado ASC
             ''', conexion)
             conexion.close()
             return empleados.to_dict('records')
@@ -84,7 +117,7 @@ class EmpleadoModel:
                 FROM empleado e
                 JOIN rol r ON e.id_rol = r.id_rol
                 WHERE e.estado_empleado = 'inactivo'
-                ORDER BY e.nombre_empleado, e.apellido_empleado
+                ORDER BY e.id_empleado ASC
             ''', conexion)
             conexion.close()
             return empleados.to_dict('records')
@@ -102,7 +135,7 @@ class EmpleadoModel:
                        e.estado_empleado, e.fecha_contratacion, e.id_rol, r.nombre_rol
                 FROM empleado e
                 JOIN rol r ON e.id_rol = r.id_rol
-                ORDER BY e.estado_empleado DESC, e.nombre_empleado, e.apellido_empleado
+                ORDER BY e.id_empleado ASC
             ''', conexion)
             conexion.close()
             return empleados.to_dict('records')

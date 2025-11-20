@@ -26,6 +26,12 @@ class EmpleadoService:
             if usuario_existente:
                 return False, None, f"El usuario '{username}' ya existe"
             # Verificar que el rol existe
+            # Solo puede haber 1 supervisor asignado por sistema 
+            rol_nombre = self.rol_model.obtener_rol_por_id(id_rol)
+            if rol_nombre and rol_nombre['nombre_rol'] == 'supervisor':
+                empleado_supervisor = self.empleado_model.obtener_empleado_por_rol('supervisor')
+                if empleado_supervisor and len(empleado_supervisor) >= 2: # Permitir hasta 2 supervisores 
+                    return False, None, "Ya existe dos supervisores asignados"
             rol = self.rol_model.obtener_rol_por_id(id_rol)
             if not rol:
                 return False, None, "El rol especificado no existe"
@@ -86,8 +92,8 @@ class EmpleadoService:
             # Si se cambia la contraseña, validar y encriptar
             password_hash = None
             if password:
-                if len(password) < 4:
-                    return False, "La contraseña debe tener al menos 4 caracteres"
+                if len(password) < 6:
+                    return False, "La contraseña debe tener al menos 6 caracteres"
                 password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
             
             # Actualizar usuario

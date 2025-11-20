@@ -15,12 +15,15 @@ class Database:
         conn = sqlite3.connect(self.db_path)
         # Configurar la conexión para manejar UTF-8 correctamente
         conn.execute("PRAGMA encoding = 'UTF-8'")
+        conn.execute("PRAGMA foreign_keys = ON") # Habilitar claves foráneas
+        conn.execute("PRAGMA journal_mode = WAL") # Modo Write-Ahead Logging para mejor concurrencia
         # Usar text_factory para manejar correctamente los strings
         # replace caracteres inválidos con el caracter de reemplazo �
         conn.text_factory = lambda x: str(x, 'utf-8', 'replace') if isinstance(x, bytes) else x
         return conn
 
     def init_database(self): # Inicializa la base de datos y crea tablas si no existen
+        conn = None
         try:
             # conn = conexión
             # cursor para crear tablas
@@ -71,7 +74,7 @@ class Database:
                     id_tipo_productos INTEGER NOT NULL,
                     id_categoria_productos INTEGER NOT NULL,
                     id_unidad_medida INTEGER NOT NULL,
-                    FOREIGN KEY (id_tipo_productos) REFERENCES tipo_productos (id_tipo_productos),
+                    FOREIGN KEY (id_tipo_productos) REFERENCES tipo_productos (id_tipo_producto),
                     FOREIGN KEY (id_categoria_productos) REFERENCES categoria_productos (id_categoria_productos),
                     FOREIGN KEY (id_unidad_medida) REFERENCES unidad_medida (id_unidad_medida)
                 )
@@ -160,7 +163,7 @@ class Database:
                     precio_unitario_detalle REAL NOT NULL,
                     descuento_aplicado REAL DEFAULT 0,
                     subtotal_detalle REAL NOT NULL,
-                    id_producto INTEGER NOT NULL,
+                    id_producto TEXT NOT NULL,
                     id_venta INTEGER NOT NULL,
                     FOREIGN KEY (id_producto) REFERENCES productos (id_producto),
                     FOREIGN KEY (id_venta) REFERENCES ventas (id_venta)
@@ -217,7 +220,7 @@ class Database:
                     monto_devolucion REAL NOT NULL,
                     estado_devolucion TEXT CHECK(estado_devolucion IN ('pendiente', 'completada', 'en proceso')) DEFAULT 'pendiente', 
                     id_devolucion INTEGER NOT NULL,
-                    id_producto INTEGER NOT NULL, 
+                    id_producto TEXT NOT NULL, 
                     FOREIGN KEY (id_devolucion) REFERENCES devolucion (id_devolucion),
                     FOREIGN KEY (id_producto) REFERENCES productos (id_producto)
                 )
@@ -284,7 +287,8 @@ class Database:
         except Exception as e:
             print(f"Error al crear la base de datos: {e}")
         finally:
-            conn.close() # Cerrar conexión
+            if conn:
+                conn.close() # Cerrar conexión
 
     def datos_iniciales(self, cursor): # → Insertar datos iniciales del minimarket
         try:
@@ -374,7 +378,7 @@ class Database:
                     ''', (nombre, descripcion))
 
             # Insertar roles adicionales
-            roles_adicionales = ['cajero', 'vendedor', 'almacenista', 'supervisor']
+            roles_adicionales = ['supervisor', 'cajero']
 
             for nombre in roles_adicionales:
                 cursor.execute(
@@ -479,9 +483,9 @@ class Database:
 
         return last_id
 
-    def verificar_credenciales(self, usuario, contraseña):
-        query = "SELECT contraseña FROM empleados WHERE usuario = ? AND activo = 1"
-        result = self.execute_query(query, (usuario,))
+    def verificar_credenciales(self, username, password_hash):
+        query = "SELECT password_hash FROM usuario WHERE username = ? AND estado_usuario = 'activo'"
+        result = self.execute_query(query, (username,))
 
         if not result:
             return False
@@ -490,7 +494,7 @@ class Database:
 
         # Verificar contraseña con bcrypt
         try:
-            return bcrypt.checkpw(contraseña.encode('utf-8'), hashed_password)
+            return bcrypt.checkpw(password_hash.encode('utf-8'), hashed_password)
         except Exception as e:
             print(f"Error verificando contraseña: {e}")
             return False
@@ -550,13 +554,13 @@ class Database:
             CREATE TRIGGER calcular_subtotal_detalle
             BEFORE INSERT ON detalle_venta
             FOR EACH ROW
+            WHEN NEW.subtotal_detalle = 0 OR NEW.subtotal_detalle IS NULL
             BEGIN
-                SELECT 
-                    (NEW.cantidad_detalle * NEW.precio_unitario_detalle) - COALESCE(NEW.descuento_aplicado, 0);
+                SELECT RAISE(ABORT, 'Error: Debe calcular el subtotal antes de insertar');
             END
         ''')
 
-    # TRIGGERS DE STOCK - ACTUALIZACIÓN
+    # TRIGGERS DE STOCK
 
         # TRIGGER 5: Actualizar stock después de venta
         cursor.execute('DROP TRIGGER IF EXISTS actualizar_stock_despues_venta')
@@ -730,19 +734,6 @@ class Database:
 
     # TRIGGERS DE PRODUCTOS
 
-        # TRIGGER 16: Actualizar fecha de modificación de productos
-        cursor.execute('DROP TRIGGER IF EXISTS actualizar_fecha_producto')
-        cursor.execute('''
-            CREATE TRIGGER actualizar_fecha_producto
-            BEFORE UPDATE ON productos
-            FOR EACH ROW
-            BEGIN
-                UPDATE productos
-                SET fecha_actualizacion = CURRENT_TIMESTAMP
-                WHERE id_producto = NEW.id_producto;
-            END
-        ''')
-
         # TRIGGER 17: Validar descuento no mayor al 100%
         cursor.execute('DROP TRIGGER IF EXISTS validar_descuento_promocion')
         cursor.execute('''
@@ -756,6 +747,32 @@ class Database:
                 END;
             END
         ''')
+
+        # TRIGGER 18: Restaurar stock al completar devolución
+        cursor.execute('DROP TRIGGER IF EXISTS restaurar_stock_devolucion')
+        cursor.execute('''
+            CREATE TRIGGER restaurar_stock_devolucion
+            AFTER INSERT ON detalle_devolucion
+            FOR EACH ROW
+            WHEN NEW.estado_devolucion = 'completada'
+            BEGIN
+                UPDATE productos
+                SET stock_producto = stock_producto + NEW.cantidad_devolucion
+                WHERE productos.id_producto = NEW.id_producto;
+            END
+        ''')
+
+        # Índice compuesto para REPORTES (acelera filtrado por fecha + estado)
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_ventas_fecha_estado ON ventas(fecha_venta, estado_venta)')
+
+        # Índices para optimización de consultas
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_productos_nombre ON productos(nombre_producto)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_ventas_fecha ON ventas(fecha_venta)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_usuario_username ON usuario(username)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_comprobante_numero ON comprobante(numero_comprobante)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_promocion_estado ON promocion(estado_promocion)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_detalle_venta_id_producto ON detalle_venta(id_producto)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_detalle_venta_id_venta ON detalle_venta(id_venta)')
 
 # Instancia global de la base de datos
 db = Database()

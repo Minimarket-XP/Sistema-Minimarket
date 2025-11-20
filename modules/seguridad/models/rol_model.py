@@ -4,11 +4,10 @@
 import pandas as pd
 from core.database import db
 
+# Modelo de datos para roles → Solo realiza operaciones CRUD en la BD. 
 class RolModel:
-    """Modelo de datos para roles. Solo realiza operaciones CRUD en la BD."""
-    
+# Insertar un nuevo rol en la DB
     def crear_rol(self, nombre_rol):
-        """Inserta un nuevo rol en la BD."""
         conexion = db.get_connection()
         cursor = conexion.cursor()
         
@@ -23,7 +22,6 @@ class RolModel:
         return rol_id
     
     def obtener_rol_por_id(self, id_rol):
-        """Obtiene un rol por su ID."""
         try:
             conexion = db.get_connection()
             cursor = conexion.cursor()
@@ -39,9 +37,8 @@ class RolModel:
         except Exception as e:
             print(f"Error obteniendo rol: {e}")
             return None
-    
+
     def obtener_todos_roles(self):
-        """Obtiene todos los roles."""
         try:
             conexion = db.get_connection()
             roles = pd.read_sql_query('SELECT id_rol, nombre_rol FROM rol ORDER BY nombre_rol', conexion)
@@ -53,7 +50,6 @@ class RolModel:
             return []
     
     def actualizar_rol(self, id_rol, nombre_rol):
-        """Actualiza el nombre de un rol."""
         try:
             conexion = db.get_connection()
             cursor = conexion.cursor()
@@ -69,7 +65,6 @@ class RolModel:
             return False
     
     def eliminar_rol(self, id_rol):
-        """Elimina un rol de la BD."""
         try:
             conexion = db.get_connection()
             cursor = conexion.cursor()
