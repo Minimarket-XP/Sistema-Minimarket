@@ -60,3 +60,63 @@ def validar_numero(valor, tipo="float"): # → Valida y convierte el valor a nú
             else (float(valor), True)
     except:
         return 0, False
+
+def _cargar_env():
+    try:
+        import os
+        from core.config import BASE_DIR
+        ruta = os.path.join(BASE_DIR, ".env")
+        if not os.path.exists(ruta):
+            return {}
+        env = {}
+        with open(ruta, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" in line:
+                    k, v = line.split("=", 1)
+                    env[k.strip()] = v.strip()
+        return env
+    except Exception:
+        return {}
+
+def consulta_dni_api(numero):
+    try:
+        import json
+        from urllib import request
+        env = _cargar_env()
+        url = env.get("DNI_API_URL", "").strip()
+        key = env.get("DNI_API_KEY", "").strip()
+        if not url or not key:
+            return None
+        payload = json.dumps({"dni": str(numero)}).encode("utf-8")
+        req = request.Request(url, data=payload, method="POST")
+        req.add_header("Content-Type", "application/json")
+        req.add_header("Accept", "application/json")
+        req.add_header("Authorization", f"Bearer {key}")
+        with request.urlopen(req, timeout=10) as resp:
+            data = resp.read().decode("utf-8")
+            return json.loads(data)
+    except Exception:
+        return None
+
+def consulta_ruc_api(numero):
+    try:
+        import json
+        from urllib import request
+        env = _cargar_env()
+        url = env.get("RUC_API_URL", "").strip()
+        key = env.get("DNI_API_KEY", "").strip()
+        if not url or not key:
+            return None
+        payload = json.dumps({"ruc": str(numero)}).encode("utf-8")
+        req = request.Request(url, data=payload, method="POST")
+        req.add_header("Content-Type", "application/json")
+        req.add_header("Accept", "application/json")
+        req.add_header("Authorization", f"Bearer {key}")
+        with request.urlopen(req, timeout=10) as resp:
+            data = resp.read().decode("utf-8")
+            return json.loads(data)
+    except Exception:
+        return None

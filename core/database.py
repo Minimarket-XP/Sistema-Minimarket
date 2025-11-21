@@ -139,6 +139,21 @@ class Database:
                 )
             ''')
 
+            # Tabla de clientes
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS clientes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    tipo_documento TEXT NOT NULL,
+                    num_documento TEXT NOT NULL UNIQUE,
+                    nombre TEXT NOT NULL,
+                    direccion TEXT,
+                    telefono TEXT,
+                    email TEXT,
+                    activo INTEGER NOT NULL DEFAULT 1,
+                    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+
             # Tabla de ventas
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS ventas (
@@ -324,6 +339,14 @@ class Database:
                 INSERT INTO usuario (username, password_hash, estado_usuario, id_empleado)
                 VALUES ('admin', ?, 'activo', ?)
             ''', (hashed_password, admin_empleado_id))
+
+            # Cliente genérico para boletas
+            cursor.execute("SELECT COUNT(*) FROM clientes WHERE id = 1")
+            if cursor.fetchone()[0] == 0:
+                cursor.execute('''
+                    INSERT INTO clientes (id, tipo_documento, num_documento, nombre, activo)
+                    VALUES (1, 'GENERICO', '00000000', 'Cliente Genérico', 1)
+                ''')
 
             # Insertar categorías
             categorias_basicas = [

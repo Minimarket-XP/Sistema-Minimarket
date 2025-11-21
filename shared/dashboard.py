@@ -110,6 +110,7 @@ class Dashboard(QMainWindow):
         # Botones principales
         botones = [
             ("Ventas", self.mostrar_ventas),
+            ("Clientes", self.mostrar_clientes),
             ("Inventario", self.mostrar_inventario),
             ("Promociones", self.mostrar_promociones),
             ("Alertas", self.mostrar_alertas),
@@ -219,6 +220,16 @@ class Dashboard(QMainWindow):
         except Exception as e:
             print("ERROR aquí", e)
             self.mostrar_error("Reportes", str(e))
+
+    def mostrar_clientes(self):
+        self.limpiar_contenido()
+        try:
+            from modules.clientes.view.cliente_view import ClientesWidget
+            clientes = ClientesWidget(self.usuario_rol)
+            self.main_content.addWidget(clientes)
+            self.main_content.setCurrentWidget(clientes)
+        except Exception as e:
+            self.mostrar_error("Clientes", f"Error al cargar módulo: {str(e)}")
 
     def mostrar_empleados(self):
         self.limpiar_contenido()
