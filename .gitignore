@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+.env
+.venv/
+ENV/
+env.bak/
+venv.bak/
+.idea/
+
+# VS Code
+.vscode/
+!.vscode/settings.json
+
+# Archivos temporales
+*.tmp
+*.temp
+dev_server.py
+migrate_to_sqlite.py
+README_MODULAR.md
+
+# Respaldos y migraciones
+db/backup_excel/
+*.xlsx
+*.xls
+
+# Archivos vacíos de desarrollo
+**/__init__.py
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs
+*.log
