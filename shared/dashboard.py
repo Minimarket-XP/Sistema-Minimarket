@@ -238,9 +238,15 @@ class Dashboard(QMainWindow):
         self.limpiar_contenido()
         self.mostrar_error("Alertas", "Próximamente en Sprint 2")
 
-    def mostrar_devoluciones(self): # → Rodrigo + Gian
+    def mostrar_devoluciones(self):
         self.limpiar_contenido()
-        self.mostrar_error("Devoluciones", "Próximamente en Sprint 2")
+        try:
+            from modules.ventas.view.devoluciones_view import DevolucionesFrame
+            devoluciones = DevolucionesFrame(self)
+            self.main_content.addWidget(devoluciones)
+            self.main_content.setCurrentWidget(devoluciones)
+        except Exception as e:
+            self.mostrar_error("Devoluciones", f"Error al cargar módulo: {str(e)}")
     
     def mostrar_configuracion(self): # → Sorteo → Semana 14
         self.limpiar_contenido()
