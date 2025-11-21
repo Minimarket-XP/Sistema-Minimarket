@@ -18,10 +18,10 @@ class Dashboard(QMainWindow):
     
     def obtener_rol_usuario(self): # → Obtener el rol de usuario activo
         try:
-            from modules.empleados.empleado_model import EmpleadoModel
-            empleado_model = EmpleadoModel()
-            empleado = empleado_model.obtenerUsuario(self.usuario)
-            return empleado['rol'] if empleado else 'empleado'
+            from modules.seguridad.services.auth_service import AuthService
+            auth_service = AuthService()
+            usuario_data = auth_service.obtener_usuario_autenticado(self.usuario)
+            return usuario_data['nombre_rol'] if usuario_data else 'empleado'
         except Exception as e:
             print(f"Error obteniendo rol de usuario: {e}")
             return 'empleado'
@@ -111,7 +111,7 @@ class Dashboard(QMainWindow):
         botones = [
             ("Ventas", self.mostrar_ventas),
             ("Inventario", self.mostrar_inventario),
-            ("Compras", self.mostrar_compras),
+            ("Promociones", self.mostrar_promociones),
             ("Alertas", self.mostrar_alertas),
             ("Devoluciones", self.mostrar_devoluciones),
             ("Reportes", self.mostrar_reportes),
@@ -192,7 +192,7 @@ class Dashboard(QMainWindow):
     def mostrar_inventario(self):
         self.limpiar_contenido()
         try:
-            from modules.productos.inventario_view import InventarioFrame
+            from modules.productos.view.inventario_view import InventarioFrame
             inventario = InventarioFrame(self)
             self.main_content.addWidget(inventario)
             self.main_content.setCurrentWidget(inventario)
@@ -202,7 +202,7 @@ class Dashboard(QMainWindow):
     def mostrar_ventas(self):
         self.limpiar_contenido()
         try:
-            from modules.ventas.venta_view import VentasFrame
+            from modules.ventas.view.venta_view import VentasFrame
             ventas = VentasFrame(self)
             self.main_content.addWidget(ventas)
             self.main_content.setCurrentWidget(ventas)
@@ -223,26 +223,32 @@ class Dashboard(QMainWindow):
     def mostrar_empleados(self):
         self.limpiar_contenido()
         try:
-            from modules.empleados.empleado_view import EmpleadosWidget
+            from modules.seguridad.view.empleado_view import EmpleadosWidget
             empleados_widget = EmpleadosWidget(self.usuario_rol)
             self.main_content.addWidget(empleados_widget)
             self.main_content.setCurrentWidget(empleados_widget)
         except Exception as e:
             self.mostrar_error("Empleados", f"Error al cargar módulo: {str(e)}")
     
-    def mostrar_compras(self):
+    def mostrar_promociones(self): # → Adriel + Choncen
         self.limpiar_contenido()
         self.mostrar_error("Compras", "Próximamente en Sprint 2")
 
-    def mostrar_alertas(self):
+    def mostrar_alertas(self): # → Arif + Hugo
         self.limpiar_contenido()
         self.mostrar_error("Alertas", "Próximamente en Sprint 2")
 
     def mostrar_devoluciones(self):
         self.limpiar_contenido()
-        self.mostrar_error("Devoluciones", "Próximamente en Sprint 2")
+        try:
+            from modules.ventas.view.devoluciones_view import DevolucionesFrame
+            devoluciones = DevolucionesFrame(self)
+            self.main_content.addWidget(devoluciones)
+            self.main_content.setCurrentWidget(devoluciones)
+        except Exception as e:
+            self.mostrar_error("Devoluciones", f"Error al cargar módulo: {str(e)}")
     
-    def mostrar_configuracion(self):
+    def mostrar_configuracion(self): # → Sorteo → Semana 14
         self.limpiar_contenido()
         self.mostrar_error("⚙️ Configuración", "Próximamente en Sprint 2")
     
@@ -273,7 +279,7 @@ class Dashboard(QMainWindow):
     def cerrar_sesion(self):
         """Cierra sesión y vuelve al login"""
         self.hide()
-        from shared.login import LoginVentana
+        from modules.seguridad.view.login import LoginVentana
         self.login_window = LoginVentana()
         self.login_window.show()
     

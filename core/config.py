@@ -8,15 +8,10 @@ DB_DIR = os.path.join(BASE_DIR, "db")
 IMG_DIR = os.path.join(DB_DIR, "imagenes")
 DATABASE_FILE = os.path.join(DB_DIR, "minimarket.db")
 
-# Archivos Excel (respaldo/migración)
-PRODUCTOS_FILE = os.path.join(DB_DIR, "productos.xlsx")
-CATEGORIAS_FILE = os.path.join(DB_DIR, "categorias.xlsx")
-EMPLEADOS_FILE = os.path.join(DB_DIR, "empleados.xlsx")
-
 # Configuración de aplicación
 APP_NAME = "Minimarket Don Manuelito"
 APP_ICON = os.path.join(IMG_DIR, "LOGOO.ico")
-APP_VERSION = "1.5.190925"
+APP_VERSION = "1.9.11"
 WINDOW_SIZE = "1800x1200"
 USE_SQLITE = True
 

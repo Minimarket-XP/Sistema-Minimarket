@@ -45,7 +45,7 @@ def main():
         app.setApplicationVersion("2.1.0 - MVP")
 
         # Importar y crear la ventana principal de login
-        from shared.login import LoginVentana
+        from modules.seguridad.view.login import LoginVentana
         login_window = LoginVentana()
         login_window.show()
         
