@@ -441,8 +441,16 @@ class Database:
                 ('ruc_empresa', '10730291529', 'RUC de la empresa'),
                 ('direccion_empresa', 'Jr. José Francisco de Zela 1338', 'Dirección de la empresa'),
                 ('telefono_empresa', '994-618-239', 'Teléfono de la empresa'),
+                ('email_empresa', 'donmanuelito@gmail.com', 'Email de la empresa'),
                 ('moneda', 'PEN', 'Moneda utilizada'),
-                ('igv', '18', 'Porcentaje de IGV')
+                ('igv', '18', 'Porcentaje de IGV'),
+                ('serie_boleta', 'B001', 'Serie para boletas'),
+                ('serie_factura', 'F001', 'Serie para facturas'),
+                ('stock_minimo_global', '10', 'Stock mínimo por defecto'),
+                ('dias_alerta_vencimiento', '30', 'Días para alertar vencimiento'),
+                ('ruta_backups', './backups', 'Ruta para almacenar backups'),
+                ('dias_retencion_auditoria', '90', 'Días de retención de auditoría'),
+                ('tiempo_sesion', '30', 'Tiempo de sesión en minutos')
             ]
 
             for clave, valor, descripcion in configuraciones:

@@ -3,8 +3,13 @@
 import sys
 import os
 import locale
+import warnings
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import Qt, QTextCodec
+
+# Suprimir warnings específicos de matplotlib y pandas
+warnings.filterwarnings('ignore', message='.*converter.*')
+warnings.filterwarnings('ignore', message='.*Tight layout not applied.*')
 
 # Configurar la codificación por defecto del sistema
 if sys.version_info[0] >= 3:

@@ -248,10 +248,16 @@ class Dashboard(QMainWindow):
         except Exception as e:
             self.mostrar_error("Devoluciones", f"Error al cargar módulo: {str(e)}")
     
-    def mostrar_configuracion(self): # → Sorteo → Semana 14
+    def mostrar_configuracion(self):
         self.limpiar_contenido()
-        self.mostrar_error("⚙️ Configuración", "Próximamente en Sprint 2")
-    
+        try:
+            from modules.sistema.configuracion_view import ConfiguracionWidget
+            configuracion = ConfiguracionWidget(self.usuario_rol)
+            self.main_content.addWidget(configuracion)
+            self.main_content.setCurrentWidget(configuracion)
+        except Exception as e:
+            self.mostrar_error("Configuración", f"Error al cargar módulo: {str(e)}")
+
     def mostrar_error(self, titulo, mensaje):
         widget = QWidget()
         layout = QVBoxLayout(widget)
