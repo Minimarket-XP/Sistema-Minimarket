@@ -105,6 +105,16 @@ class Database:
                 )
             ''')
 
+            # Tabla de promocion_categoria (asignar promociones a categorías)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS promocion_categoria (
+                    id_promocion INTEGER NOT NULL,
+                    id_categoria INTEGER NOT NULL,
+                    PRIMARY KEY (id_promocion, id_categoria),
+                    FOREIGN KEY (id_promocion) REFERENCES promocion (id_promocion),
+                    FOREIGN KEY (id_categoria) REFERENCES categoria_productos (id_categoria_productos)
+                )
+            ''')
             # Tabla de roles
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS rol (
@@ -165,10 +175,20 @@ class Database:
                     subtotal_detalle REAL NOT NULL,
                     id_producto TEXT NOT NULL,
                     id_venta INTEGER NOT NULL,
+                    id_promocion INTEGER,
                     FOREIGN KEY (id_producto) REFERENCES productos (id_producto),
                     FOREIGN KEY (id_venta) REFERENCES ventas (id_venta)
                 )
             ''')
+            # Si la base ya existía sin la columna `id_promocion`, añadirla ahora
+            try:
+                cursor.execute("PRAGMA table_info(detalle_venta)")
+                cols = [r[1] for r in cursor.fetchall()]
+                if 'id_promocion' not in cols:
+                    cursor.execute('ALTER TABLE detalle_venta ADD COLUMN id_promocion INTEGER')
+            except Exception:
+                # No interrumpir la inicialización por este paso
+                pass
 
             # Tabla de comprobantes
             cursor.execute('''

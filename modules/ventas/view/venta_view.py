@@ -169,8 +169,8 @@ class VentasFrame(QWidget):
         
         # Tabla del carrito - DIRECTAMENTE SIN PANEL
         self.tabla_carrito = TablaNoEditable()
-        self.tabla_carrito.setColumnCount(5)
-        self.tabla_carrito.setHorizontalHeaderLabels(["Producto", "Cant.", "Precio", "Total", "Acción"]) 
+        self.tabla_carrito.setColumnCount(6)
+        self.tabla_carrito.setHorizontalHeaderLabels(["Producto", "Cant.", "Precio", "Total", "Promoción", "Acción"]) 
         self.tabla_carrito.setStyleSheet("""
             QTableWidget {
                 background-color: white;
@@ -212,7 +212,7 @@ class VentasFrame(QWidget):
             }
         """)
         
-        anchosC = [243, 57, 69, 85, 58]  # Producto, Cant., Precio, Total, Acción
+        anchosC = [220, 57, 69, 85, 140, 58]  # Producto, Cant., Precio, Total, Promoción, Acción
         for i, anchoC in enumerate(anchosC):
             self.tabla_carrito.setColumnWidth(i, anchoC)
         
@@ -511,10 +511,17 @@ class VentasFrame(QWidget):
                 item["cantidad"] += cantidad_kg  # Siempre almacenar en kg
                 item["base_total"] = item["cantidad"] * item["precio"]
                 item["total"] = item["base_total"]
+                # Aplicar promoción automática si existe
+                try:
+                    from modules.productos.service.promocion_service import PromocionService
+                    PromocionService().aplicar_descuento_a_item(item)
+                except Exception:
+                    # No detener la operación por errores en promociones
+                    pass
                 break
         else:
             # Agregar nuevo producto al carrito (cantidad siempre en kg)
-            self.carrito.append({
+            nuevo_item = {
                 "id": id_producto,
                 "nombre": nombre,
                 "cantidad": cantidad_kg,
@@ -523,7 +530,14 @@ class VentasFrame(QWidget):
                 "total": precio * cantidad_kg,
                 "descuento": None,
                 "es_peso": es_peso  # Guardar si es producto por peso
-            })
+            }
+            # Aplicar promoción automática si existe
+            try:
+                from modules.productos.service.promocion_service import PromocionService
+                PromocionService().aplicar_descuento_a_item(nuevo_item)
+            except Exception:
+                pass
+            self.carrito.append(nuevo_item)
 
         self.actualizarCarrito()
         
@@ -618,6 +632,15 @@ class VentasFrame(QWidget):
         # Resetear descuento_aplicado temporal antes de cálculo (se actualizará si existe)
         # NOTE: descuentos se aplican sobre item['total'] que debe representar el estado actual
         for row_idx, item in enumerate(self.carrito):
+            # Recalcular/promocionar item antes de mostrar (asegura datos actualizados)
+            try:
+                from modules.productos.service.promocion_service import PromocionService
+                from modules.productos.models.promocion_model import PromocionModel
+                PromocionService().aplicar_descuento_a_item(item)
+            except Exception:
+                # Silenciar errores en promociones para no romper la vista
+                pass
+
             self.tabla_carrito.setItem(row_idx, 0, QTableWidgetItem(item["nombre"]))
             
             # Mostrar cantidad en gramos si es producto por peso, sino en unidades
@@ -629,6 +652,28 @@ class VentasFrame(QWidget):
             
             self.tabla_carrito.setItem(row_idx, 2, QTableWidgetItem(formatear_precio(item["precio"])))
             self.tabla_carrito.setItem(row_idx, 3, QTableWidgetItem(formatear_precio(item.get("total", 0))))
+
+            # Promoción: mostrar badge si existe
+            try:
+                from modules.productos.models.promocion_model import PromocionModel
+                id_prom = item.get('id_promocion')
+                if id_prom:
+                    prom = PromocionModel().obtener_por_id(id_prom)
+                    if prom:
+                        prom_name = prom.get('nombre', '')
+                        prom_pct = prom.get('descuento', item.get('descuento_pct_aplicado', 0))
+                        promo_label = QLabel(f"{prom_name} ({prom_pct:.0f}% )")
+                        promo_label.setStyleSheet("background-color:#27ae60; color:white; padding:4px 8px; border-radius:8px; font-weight:bold;")
+                        promo_label.setToolTip(f"Promoción: {prom_name}\nDescuento: {prom_pct:.0f}%")
+                    else:
+                        promo_label = QLabel("")
+                else:
+                    promo_label = QLabel("")
+            except Exception:
+                promo_label = QLabel("")
+
+            promo_label.setAlignment(Qt.AlignCenter)
+            self.tabla_carrito.setCellWidget(row_idx, 4, promo_label)
 
             # Acciones: solo botón remover
             action_widget = QWidget()
@@ -653,7 +698,7 @@ class VentasFrame(QWidget):
             btn_remover.clicked.connect(lambda checked, idx=row_idx: self.removerCarrito(idx))
             action_layout.addWidget(btn_remover)
             action_widget.setLayout(action_layout)
-            self.tabla_carrito.setCellWidget(row_idx, 4, action_widget)
+            self.tabla_carrito.setCellWidget(row_idx, 5, action_widget)
             self.total += float(item.get("total", 0))
 
         self.label_total.setText(f"Total: {formatear_precio(self.total)}")

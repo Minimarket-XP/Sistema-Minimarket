@@ -232,7 +232,13 @@ class Dashboard(QMainWindow):
     
     def mostrar_promociones(self): # → Adriel + Choncen
         self.limpiar_contenido()
-        self.mostrar_error("Compras", "Próximamente en Sprint 2")
+        try:
+            from modules.productos.view.promociones_view import PromocionesFrame
+            frame = PromocionesFrame(self)
+            self.main_content.addWidget(frame)
+            self.main_content.setCurrentWidget(frame)
+        except Exception as e:
+            self.mostrar_error("Promociones", f"Error al cargar módulo: {e}")
 
     def mostrar_alertas(self): # → Arif + Hugo
         self.limpiar_contenido()

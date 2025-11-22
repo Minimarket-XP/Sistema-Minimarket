@@ -34,12 +34,20 @@ class VentaService:
             conexion = db.get_connection()
             cursor = conexion.cursor()
 
-            # 1. Insertar venta principal (sin descuentos manuales, se aplican desde BD)
+            # Calcular descuentos y totales a persistir
+            descuento_total = sum(float(item.get('descuento') or 0.0) for item in carrito)
+            descuento_pct_global = 0.0
+            try:
+                descuento_pct_global = max(float(item.get('descuento_pct_aplicado') or 0.0) for item in carrito)
+            except Exception:
+                descuento_pct_global = 0.0
+
+            # 1. Insertar venta principal con descuentos calculados
             cursor.execute('''
                 INSERT INTO ventas (id_venta, fecha_venta, id_empleado, total_venta, descuento_venta,
                                     descuento_pct, descuento_tipo, metodo_pago, estado_venta)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (venta_id, fecha_hora, empleado_id, total, 0.0, 0.0, "", metodo_pago, 'completado'))
+            ''', (venta_id, fecha_hora, empleado_id, total, round(descuento_total,2), descuento_pct_global, "promocion", metodo_pago, 'completado'))
 
             # 2. Insertar detalles de venta
             # Los triggers automáticamente:
@@ -48,12 +56,16 @@ class VentaService:
             # - Validan precios y cantidades positivas
             # Las promociones activas se aplican desde la BD
             for item in carrito:
+                # Persistir detalle: guardar subtotal antes de descuento (base_total), descuento_aplicado y id_promocion si existe
+                subtotal_detalle = float(item.get('base_total', item.get('precio',0) * item.get('cantidad',0)))
+                descuento_aplicado = float(item.get('descuento') or 0.0)
+                id_prom = item.get('id_promocion') if item.get('id_promocion') else None
                 cursor.execute('''
                     INSERT INTO detalle_venta 
-                    (id_venta, id_producto, cantidad_detalle, precio_unitario_detalle, subtotal_detalle, descuento_aplicado)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    (id_venta, id_producto, cantidad_detalle, precio_unitario_detalle, subtotal_detalle, descuento_aplicado, id_promocion)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 ''', (venta_id, item['id'], item['cantidad'],
-                      item['precio'], item['total'], 0.0))
+                      item['precio'], subtotal_detalle, descuento_aplicado, id_prom))
 
             conexion.commit()
             conexion.close()
