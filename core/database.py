@@ -278,6 +278,25 @@ class Database:
                 )
             ''')
 
+            # Tabla Cache de Documentos (DNI/RUC)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS cache_documentos (
+                    numero_documento TEXT PRIMARY KEY,
+                    tipo_documento TEXT CHECK(tipo_documento IN ('DNI', 'RUC')) NOT NULL,
+                    nombres TEXT,
+                    apellido_paterno TEXT,
+                    apellido_materno TEXT,
+                    razon_social TEXT,
+                    direccion TEXT,
+                    estado TEXT,
+                    condicion TEXT,
+                    departamento TEXT,
+                    provincia TEXT,
+                    distrito TEXT,
+                    ultima_consulta DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+
             # Insertar datos iniciales si no existen
             self.datos_iniciales(cursor)
             # Crear triggers de lógica de negocio
@@ -778,9 +797,11 @@ class Database:
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_ventas_fecha ON ventas(fecha_venta)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_usuario_username ON usuario(username)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_comprobante_numero ON comprobante(numero_comprobante)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_comprobante_venta ON comprobante(id_venta)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_promocion_estado ON promocion(estado_promocion)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_detalle_venta_id_producto ON detalle_venta(id_producto)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_detalle_venta_id_venta ON detalle_venta(id_venta)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_cache_documentos_tipo ON cache_documentos(tipo_documento, numero_documento)')
 
 # Instancia global de la base de datos
 db = Database()

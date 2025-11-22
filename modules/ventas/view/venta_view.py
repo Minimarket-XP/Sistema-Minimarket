@@ -3,12 +3,14 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                              QPushButton, QTableWidget, QTableWidgetItem, 
                              QLineEdit, QSpinBox, QMessageBox, QFrame, 
-                             QAbstractItemView, QHeaderView, QDialog, QDialogButtonBox)
+                             QAbstractItemView, QHeaderView, QDialog, QDialogButtonBox,
+                             QComboBox, QGroupBox)
 from PyQt5.QtCore import Qt
 from core.config import *
 from modules.productos.models.producto_model import ProductoModel
 from modules.ventas.service.venta_service import VentaService
-from shared.helpers import formatear_precio
+from modules.ventas.service.comprobante_service import ComprobanteService
+from shared.helpers import formatear_precio, validar_dni, validar_ruc
 from modules.productos.view.inventario_view import TablaNoEditable
 import pandas as pd
 from modules.productos.models.unidad_medida_model import UnidadMedidaModel
@@ -19,9 +21,11 @@ class VentasFrame(QWidget):
         
         self.producto_model = ProductoModel()
         self.venta_service = VentaService()  # Usar Service en vez de Model
+        self.comprobante_service = ComprobanteService()
         self.carrito = []  # Lista de productos en el carrito
         self.total = 0.0
-        
+        self.datos_cliente = None  # Para almacenar datos del cliente temporal
+
         self.crearInterfaz()
         self.cargarProductos()
     
@@ -268,6 +272,80 @@ class VentasFrame(QWidget):
         right_layout.addWidget(btn_procesar)
         right_layout.addWidget(btn_limpiar)
         
+        # Separador
+        linea = QFrame()
+        linea.setFrameShape(QFrame.HLine)
+        linea.setStyleSheet("background-color: #bdc3c7;")
+        right_layout.addWidget(linea)
+
+        # Sección compacta de API
+        api_group = QGroupBox("Consulta DNI/RUC")
+        api_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                font-size: 13px;
+                border: 2px solid #95a5a6;
+                border-radius: 5px;
+                margin-top: 10px;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+            }
+        """)
+        api_layout = QVBoxLayout()
+
+        # Fila 1: Tipo y número
+        row1 = QHBoxLayout()
+        self.tipo_doc_combo = QComboBox()
+        self.tipo_doc_combo.addItems(['DNI', 'RUC'])
+        self.tipo_doc_combo.setStyleSheet("padding: 5px; font-size: 12px;")
+        self.tipo_doc_combo.setMaximumWidth(70)
+
+        self.num_doc_input = QLineEdit()
+        self.num_doc_input.setPlaceholderText("Número...")
+        self.num_doc_input.setStyleSheet("padding: 5px; font-size: 12px;")
+        self.num_doc_input.setMaxLength(11)
+
+        btn_consultar = QPushButton("🔍")
+        btn_consultar.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {INFO_COLOR};
+                color: white;
+                border: none;
+                padding: 5px;
+                font-size: 14px;
+                border-radius: 3px;
+            }}
+            QPushButton:hover {{
+                background-color: #2980b9;
+            }}
+        """)
+        btn_consultar.setMaximumWidth(40)
+        btn_consultar.clicked.connect(self.consultarDocumento)
+
+        row1.addWidget(self.tipo_doc_combo)
+        row1.addWidget(self.num_doc_input)
+        row1.addWidget(btn_consultar)
+
+        # Fila 2: Resultado
+        self.resultado_api = QLabel("Sin consulta")
+        self.resultado_api.setStyleSheet("""
+            font-size: 11px;
+            color: #7f8c8d;
+            padding: 5px;
+            background-color: #ecf0f1;
+            border-radius: 3px;
+        """)
+        self.resultado_api.setWordWrap(True)
+
+        api_layout.addLayout(row1)
+        api_layout.addWidget(self.resultado_api)
+        api_group.setLayout(api_layout)
+        right_layout.addWidget(api_group)
+
         panels_layout.addLayout(right_layout, 1)
         
         main_layout.addLayout(panels_layout)
@@ -590,6 +668,11 @@ class VentasFrame(QWidget):
     def limpiarCarrito(self):
         self.carrito.clear()
         self.actualizarCarrito()
+        # Limpiar también datos del cliente temporal
+        self.datos_cliente = None
+        self.num_doc_input.clear()
+        self.resultado_api.setText("Sin consulta")
+        self.resultado_api.setStyleSheet("font-size: 11px; color: #7f8c8d; padding: 5px; background-color: #ecf0f1; border-radius: 3px;")
         QMessageBox.information(self, "Carrito limpio", "Todos los productos han sido removidos del carrito")
     
     def procesarVenta(self):
@@ -611,10 +694,99 @@ class VentasFrame(QWidget):
             )
             
             if success:
-                QMessageBox.information(self, "Venta Exitosa", 
-                                       f"✅ {mensaje}\nID: {venta_id}")
+                # Preguntar si desea emitir comprobante
+                if self.datos_cliente:
+                    tipo_comp = "Boleta" if self.datos_cliente.get('tipo') == 'boleta' else "Factura"
+                    cliente_info = self.datos_cliente.get('nombre_completo') if tipo_comp == "Boleta" else self.datos_cliente.get('razon_social')
+
+                    reply_comp = QMessageBox.question(
+                        self,
+                        "Emitir Comprobante",
+                        f"Venta exitosa ✅\nID: {venta_id}\n\n¿Emitir {tipo_comp} para:\n{cliente_info}?",
+                        QMessageBox.Yes | QMessageBox.No
+                    )
+
+                    if reply_comp == QMessageBox.Yes:
+                        self.emitirComprobante(venta_id)
+                else:
+                    QMessageBox.information(self, "Venta Exitosa",
+                                           f"✅ {mensaje}\nID: {venta_id}\n\n💡 Tip: Consulta DNI/RUC antes de vender para emitir comprobante automáticamente.")
+
                 self.limpiarCarrito()
                 self.cargarProductos()  # Recargar para actualizar stock
-
             else:
                 QMessageBox.critical(self, "Error en Venta", f"❌ {mensaje}")
+
+    def emitirComprobante(self, venta_id):
+        """Emite comprobante (boleta o factura) para una venta"""
+        try:
+            tipo = 'boleta' if self.datos_cliente.get('tipo') == 'boleta' else 'factura'
+            resultado = self.comprobante_service.emitir_comprobante(venta_id, tipo, self.datos_cliente)
+
+            if resultado.get('success'):
+                codigo = resultado.get('codigo', '')
+                QMessageBox.information(
+                    self,
+                    "Comprobante Emitido",
+                    f"✅ {tipo.upper()} emitida correctamente\n\nCódigo: {codigo}"
+                )
+            else:
+                QMessageBox.warning(self, "Error", f"No se pudo emitir el comprobante:\n{resultado.get('error', 'Error desconocido')}")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Error al emitir comprobante:\n{str(e)}")
+
+    def consultarDocumento(self):
+        """Consulta DNI o RUC usando la API"""
+        tipo = self.tipo_doc_combo.currentText()
+        numero = self.num_doc_input.text().strip()
+
+        # Validaciones usando helpers
+        if tipo == 'DNI':
+            valido, mensaje = validar_dni(numero)
+            if not valido:
+                self.resultado_api.setText(f"⚠️ {mensaje}")
+                self.resultado_api.setStyleSheet("font-size: 11px; color: #e74c3c; padding: 5px; background-color: #fadbd8; border-radius: 3px;")
+                return
+        else:  # RUC
+            valido, mensaje = validar_ruc(numero)
+            if not valido:
+                self.resultado_api.setText(f"⚠️ {mensaje}")
+                self.resultado_api.setStyleSheet("font-size: 11px; color: #e74c3c; padding: 5px; background-color: #fadbd8; border-radius: 3px;")
+                return
+
+        # Consultar
+        self.resultado_api.setText("🔄 Consultando...")
+        self.resultado_api.setStyleSheet("font-size: 11px; color: #3498db; padding: 5px; background-color: #d6eaf8; border-radius: 3px;")
+
+        resultado = self.comprobante_service.obtener_datos_documento(numero, tipo)
+
+        if resultado.get('success'):
+            origen = resultado.get('origen', 'api')
+            icono_origen = "💾" if origen == 'cache' else "🌐"
+
+            if tipo == 'DNI':
+                nombre = resultado.get('nombre_completo', 'N/A')
+                texto = f"✅ {icono_origen} {nombre}"
+                self.datos_cliente = {
+                    'num_documento': numero,
+                    'nombre_completo': nombre,
+                    'tipo': 'boleta'
+                }
+            else:  # RUC
+                razon = resultado.get('razon_social', 'N/A')
+                texto = f"✅ {icono_origen} {razon[:40]}..." if len(razon) > 40 else f"✅ {icono_origen} {razon}"
+                self.datos_cliente = {
+                    'ruc': numero,
+                    'razon_social': razon,
+                    'direccion': resultado.get('direccion', ''),
+                    'tipo': 'factura'
+                }
+
+            self.resultado_api.setText(texto)
+            self.resultado_api.setStyleSheet("font-size: 11px; color: #27ae60; padding: 5px; background-color: #d5f4e6; border-radius: 3px;")
+        else:
+            error = resultado.get('error', 'Error desconocido')
+            self.resultado_api.setText(f"❌ {error}")
+            self.resultado_api.setStyleSheet("font-size: 11px; color: #e74c3c; padding: 5px; background-color: #fadbd8; border-radius: 3px;")
+            self.datos_cliente = None
+

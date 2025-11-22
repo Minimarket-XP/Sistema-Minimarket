@@ -60,3 +60,48 @@ def validar_numero(valor, tipo="float"): # → Valida y convierte el valor a nú
             else (float(valor), True)
     except:
         return 0, False
+
+def validar_dni(numero): # → Valida formato de DNI peruano (8 dígitos)
+    """
+    Valida que el DNI tenga exactamente 8 dígitos numéricos
+    Retorna: (True/False, mensaje)
+    """
+    numero = str(numero).strip()
+    if not numero:
+        return False, "DNI no puede estar vacío"
+    if not numero.isdigit():
+        return False, "DNI debe contener solo números"
+    if len(numero) != 8:
+        return False, "DNI debe tener exactamente 8 dígitos"
+    return True, "DNI válido"
+
+def validar_ruc(numero): # → Valida formato de RUC peruano (11 dígitos)
+    """
+    Valida que el RUC tenga exactamente 11 dígitos numéricos
+    y comience con 10, 15, 16, 17 o 20
+    Retorna: (True/False, mensaje)
+    """
+    numero = str(numero).strip()
+    if not numero:
+        return False, "RUC no puede estar vacío"
+    if not numero.isdigit():
+        return False, "RUC debe contener solo números"
+    if len(numero) != 11:
+        return False, "RUC debe tener exactamente 11 dígitos"
+    if not numero.startswith(('10', '15', '16', '17', '20')):
+        return False, "RUC debe comenzar con 10, 15, 16, 17 o 20"
+    return True, "RUC válido"
+
+def formatear_documento(tipo, numero): # → Formatea DNI/RUC para mostrar
+    """
+    Formatea un número de documento para visualización
+    DNI: 12345678 → 12345678
+    RUC: 20123456789 → 20-12345678-9
+    """
+    numero = str(numero).strip()
+    if tipo == 'DNI':
+        return numero
+    elif tipo == 'RUC' and len(numero) == 11:
+        return f"{numero[:2]}-{numero[2:10]}-{numero[10]}"
+    return numero
+
