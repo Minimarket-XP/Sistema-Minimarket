@@ -22,6 +22,55 @@ class Database:
         conn.text_factory = lambda x: str(x, 'utf-8', 'replace') if isinstance(x, bytes) else x
         return conn
 
+    # Helper de ejecución centralizada para evitar manejo manual de commit/close
+    def execute(self, sql, params=(), commit=False):
+        conn = None
+        try:
+            conn = self.get_connection()
+            cur = conn.cursor()
+            cur.execute(sql, params)
+            if commit:
+                conn.commit()
+            return cur
+        finally:
+            if conn:
+                conn.close()
+
+    def fetchall(self, sql, params=()):
+        conn = None
+        try:
+            conn = self.get_connection()
+            cur = conn.cursor()
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+            return rows
+        finally:
+            if conn:
+                conn.close()
+
+    def fetchone(self, sql, params=()):
+        conn = None
+        try:
+            conn = self.get_connection()
+            cur = conn.cursor()
+            cur.execute(sql, params)
+            return cur.fetchone()
+        finally:
+            if conn:
+                conn.close()
+
+    def query_df(self, sql, params=None):
+        # Usar pandas para consultas tabulares cuando sea conveniente
+        try:
+            import pandas as pd
+            conn = self.get_connection()
+            df = pd.read_sql_query(sql, conn, params=params)
+            conn.close()
+            return df
+        except Exception:
+            # Si falla, devolver None para que el llamador lo maneje
+            return None
+
     def init_database(self): # Inicializa la base de datos y crea tablas si no existen
         conn = None
         try:
@@ -114,6 +163,31 @@ class Database:
                     FOREIGN KEY (id_promocion) REFERENCES promocion (id_promocion),
                     FOREIGN KEY (id_categoria) REFERENCES categoria_productos (id_categoria_productos)
                 )
+            ''')
+            # Vistas para centralizar consultas usadas por la UI
+            cursor.execute('''
+                CREATE VIEW IF NOT EXISTS view_promociones AS
+                SELECT id_promocion AS id_promocion,
+                       nombre_promocion AS nombre,
+                       descripcion_promocion AS descripcion,
+                       descuento AS descuento,
+                       fecha_inicio AS fecha_inicio,
+                       fecha_fin AS fecha_fin,
+                       estado_promocion AS estado
+                FROM promocion
+            ''')
+
+            cursor.execute('''
+                CREATE VIEW IF NOT EXISTS view_productos_autocomplete AS
+                SELECT id_producto, nombre_producto FROM productos
+            ''')
+            # Vista de promociones activas (filtradas por fechas y estado)
+            cursor.execute('''
+                CREATE VIEW IF NOT EXISTS view_promociones_activas AS
+                SELECT id_promocion, nombre_promocion AS nombre, descripcion_promocion AS descripcion,
+                       descuento, fecha_inicio, fecha_fin, estado_promocion AS estado
+                FROM promocion
+                WHERE estado_promocion = 'activa' AND datetime(fecha_inicio) <= datetime('now') AND datetime(fecha_fin) >= datetime('now')
             ''')
             # Tabla de roles
             cursor.execute('''
@@ -766,6 +840,20 @@ class Database:
             END
         ''')
 
+        # TRIGGER 14b: Validar fechas de promoción al actualizar
+        cursor.execute('DROP TRIGGER IF EXISTS validar_fechas_promocion_update')
+        cursor.execute('''
+            CREATE TRIGGER validar_fechas_promocion_update
+            BEFORE UPDATE ON promocion
+            FOR EACH ROW
+            BEGIN
+                SELECT CASE
+                    WHEN NEW.fecha_fin <= NEW.fecha_inicio
+                    THEN RAISE(ABORT, 'La fecha de fin debe ser posterior a la fecha de inicio')
+                END;
+            END
+        ''')
+
         # TRIGGER 15: Actualizar estado de promoción expirada
         cursor.execute('DROP TRIGGER IF EXISTS actualizar_estado_promocion_expirada')
         cursor.execute('''
@@ -777,6 +865,47 @@ class Database:
                 UPDATE promocion 
                 SET estado_promocion = 'expirada' 
                 WHERE id_promocion = NEW.id_promocion;
+            END
+        ''')
+
+        # TRIGGER 15b: Auto-expirar al insertar si la fecha ya pasó
+        cursor.execute('DROP TRIGGER IF EXISTS actualizar_estado_promocion_expirada_insert')
+        cursor.execute('''
+            CREATE TRIGGER actualizar_estado_promocion_expirada_insert
+            AFTER INSERT ON promocion
+            FOR EACH ROW
+            WHEN datetime('now') > NEW.fecha_fin AND NEW.estado_promocion != 'expirada'
+            BEGIN
+                UPDATE promocion
+                SET estado_promocion = 'expirada'
+                WHERE id_promocion = NEW.id_promocion;
+            END
+        ''')
+
+        # TRIGGER prevent manual setting to 'expirada' on INSERT/UPDATE when fecha_fin not passed
+        cursor.execute('DROP TRIGGER IF EXISTS prevenir_marcar_expirada_insert')
+        cursor.execute('''
+            CREATE TRIGGER prevenir_marcar_expirada_insert
+            BEFORE INSERT ON promocion
+            FOR EACH ROW
+            BEGIN
+                SELECT CASE
+                    WHEN NEW.estado_promocion = 'expirada' AND datetime('now') <= NEW.fecha_fin
+                    THEN RAISE(ABORT, 'No se puede marcar como expirada manualmente antes de la fecha fin')
+                END;
+            END
+        ''')
+
+        cursor.execute('DROP TRIGGER IF EXISTS prevenir_marcar_expirada_update')
+        cursor.execute('''
+            CREATE TRIGGER prevenir_marcar_expirada_update
+            BEFORE UPDATE ON promocion
+            FOR EACH ROW
+            BEGIN
+                SELECT CASE
+                    WHEN NEW.estado_promocion = 'expirada' AND datetime('now') <= NEW.fecha_fin
+                    THEN RAISE(ABORT, 'No se puede marcar como expirada manualmente antes de la fecha fin')
+                END;
             END
         ''')
 
@@ -796,7 +925,33 @@ class Database:
             END
         ''')
 
-        # TRIGGER 18: Restaurar stock al completar devolución
+        # TRIGGER 17b: Validar descuento al actualizar
+        cursor.execute('DROP TRIGGER IF EXISTS validar_descuento_promocion_update')
+        cursor.execute('''
+            CREATE TRIGGER validar_descuento_promocion_update
+            BEFORE UPDATE ON promocion
+            FOR EACH ROW
+            BEGIN
+                SELECT CASE
+                    WHEN NEW.descuento < 0 OR NEW.descuento > 100
+                    THEN RAISE(ABORT, 'El descuento debe estar entre 0 y 100')
+                END;
+            END
+        ''')
+
+        # TRIGGER 18: Eliminar asignaciones relacionadas cuando se elimina una promoción
+        cursor.execute('DROP TRIGGER IF EXISTS eliminar_asignaciones_promocion')
+        cursor.execute('''
+            CREATE TRIGGER eliminar_asignaciones_promocion
+            BEFORE DELETE ON promocion
+            FOR EACH ROW
+            BEGIN
+                DELETE FROM promocion_producto WHERE id_promocion = OLD.id_promocion;
+                DELETE FROM promocion_categoria WHERE id_promocion = OLD.id_promocion;
+            END
+        ''')
+
+        # TRIGGER 19: Restaurar stock al completar devolución
         cursor.execute('DROP TRIGGER IF EXISTS restaurar_stock_devolucion')
         cursor.execute('''
             CREATE TRIGGER restaurar_stock_devolucion
