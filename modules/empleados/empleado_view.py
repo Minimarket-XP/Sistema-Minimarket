@@ -204,7 +204,7 @@ class EmpleadosWidget(QWidget):
                         background-color: #2980b9;
                     }
                 """)
-                btn_password.clicked.connect(lambda checked, emp_id=empleado['id']: self.cambiar_contraseña(emp_id))
+                btn_password.clicked.connect(lambda checked, emp_id=empleado['id']: self.cambiar_contrasena(emp_id))
                 
                 # Boton Activar/Desactivar segun estado
                 if empleado["usuario"] != "admin":
@@ -282,7 +282,7 @@ class EmpleadosWidget(QWidget):
                 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error al cargar empleados: {str(e)}")
-    
+
     def crear_empleado(self):
         dialog = CrearEmpleadoDialog(self)
         if dialog.exec_() == QDialog.Accepted:
