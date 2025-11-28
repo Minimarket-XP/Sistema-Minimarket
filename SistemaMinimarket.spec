@@ -34,6 +34,7 @@ a = Analysis(
         'matplotlib.backends.backend_qt5agg',
         'matplotlib.figure',
         'matplotlib.pyplot',
+        'unittest',  # Requerido por matplotlib
 
         # Reportes
         'reportlab',
@@ -41,6 +42,24 @@ a = Analysis(
         'reportlab.lib',
         'reportlab.platypus',
         'openpyxl',
+        
+        # APIs y networking
+        'requests',
+        'urllib',
+        'urllib.request',
+        'urllib.parse',
+        'http',
+        'http.client',
+        'ssl',
+        'certifi',
+        'json',
+        
+        # XML generation
+        'xml',
+        'xml.etree',
+        'xml.etree.ElementTree',
+        'xml.dom',
+        'xml.dom.minidom',
 
         # Módulos del sistema
         'modules.productos.models.producto_model',
@@ -66,6 +85,7 @@ a = Analysis(
         'modules.ventas.service.descuentos_service',
         'modules.ventas.view.venta_view',
         'modules.ventas.view.devoluciones_view',
+        'modules.ventas.view.dialogo_comprobante',
 
         'modules.seguridad.models.usuario_model',
         'modules.seguridad.models.empleado_model',

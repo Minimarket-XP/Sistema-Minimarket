@@ -10,6 +10,7 @@ from core.config import *
 from modules.productos.models.producto_model import ProductoModel
 from modules.ventas.service.venta_service import VentaService
 from modules.ventas.service.comprobante_service import ComprobanteService
+from modules.ventas.view.dialogo_comprobante import DialogoComprobante
 from shared.helpers import formatear_precio, validar_dni, validar_ruc
 from modules.productos.view.inventario_view import TablaNoEditable
 import pandas as pd
@@ -277,74 +278,6 @@ class VentasFrame(QWidget):
         linea.setFrameShape(QFrame.HLine)
         linea.setStyleSheet("background-color: #bdc3c7;")
         right_layout.addWidget(linea)
-
-        # Sección compacta de API
-        api_group = QGroupBox("Consulta DNI/RUC")
-        api_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                font-size: 13px;
-                border: 2px solid #95a5a6;
-                border-radius: 5px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 5px;
-            }
-        """)
-        api_layout = QVBoxLayout()
-
-        # Fila 1: Tipo y número
-        row1 = QHBoxLayout()
-        self.tipo_doc_combo = QComboBox()
-        self.tipo_doc_combo.addItems(['DNI', 'RUC'])
-        self.tipo_doc_combo.setStyleSheet("padding: 5px; font-size: 12px;")
-        self.tipo_doc_combo.setMaximumWidth(70)
-
-        self.num_doc_input = QLineEdit()
-        self.num_doc_input.setPlaceholderText("Número...")
-        self.num_doc_input.setStyleSheet("padding: 5px; font-size: 12px;")
-        self.num_doc_input.setMaxLength(11)
-
-        btn_consultar = QPushButton("🔍")
-        btn_consultar.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {INFO_COLOR};
-                color: white;
-                border: none;
-                padding: 5px;
-                font-size: 14px;
-                border-radius: 3px;
-            }}
-            QPushButton:hover {{
-                background-color: #2980b9;
-            }}
-        """)
-        btn_consultar.setMaximumWidth(40)
-        btn_consultar.clicked.connect(self.consultarDocumento)
-
-        row1.addWidget(self.tipo_doc_combo)
-        row1.addWidget(self.num_doc_input)
-        row1.addWidget(btn_consultar)
-
-        # Fila 2: Resultado
-        self.resultado_api = QLabel("Sin consulta")
-        self.resultado_api.setStyleSheet("""
-            font-size: 11px;
-            color: #7f8c8d;
-            padding: 5px;
-            background-color: #ecf0f1;
-            border-radius: 3px;
-        """)
-        self.resultado_api.setWordWrap(True)
-
-        api_layout.addLayout(row1)
-        api_layout.addWidget(self.resultado_api)
-        api_group.setLayout(api_layout)
-        right_layout.addWidget(api_group)
 
         panels_layout.addLayout(right_layout, 1)
         
@@ -715,55 +648,54 @@ class VentasFrame(QWidget):
         self.actualizarCarrito()
         # Limpiar también datos del cliente temporal
         self.datos_cliente = None
-        self.num_doc_input.clear()
-        self.resultado_api.setText("Sin consulta")
-        self.resultado_api.setStyleSheet("font-size: 11px; color: #7f8c8d; padding: 5px; background-color: #ecf0f1; border-radius: 3px;")
         QMessageBox.information(self, "Carrito limpio", "Todos los productos han sido removidos del carrito")
     
+# → Procesar venta con generación automática de comprobante
     def procesarVenta(self):
         if not self.carrito:
             QMessageBox.warning(self, "Carrito vacío", "Agrega productos al carrito antes de procesar la venta")
             return
         
-        # Confirmar venta
-        reply = QMessageBox.question(self, "Procesar Venta", 
-                                   f"¿Procesar venta por {formatear_precio(self.total)}?",
-                                   QMessageBox.Yes | QMessageBox.No)
+        # Mostrar diálogo flotante para capturar datos del cliente y método de pago
+        dialogo = DialogoComprobante(self, self.comprobante_service)
         
-        if reply == QMessageBox.Yes:
-            # Procesar la venta usando el SERVICE (lógica de negocio)
-            success, venta_id, mensaje = self.venta_service.procesar_venta_completa(
-                carrito=self.carrito,
-                empleado_id=1,  # Por ahora usamos empleado 1 por defecto
-                metodo_pago="efectivo"
+        if dialogo.exec_() == QDialog.Accepted:
+            # Obtener datos del diálogo
+            datos = dialogo.obtenerDatos()
+            datos_cliente = datos.get('datos_cliente')
+            metodo_pago = datos.get('metodo_pago', 'efectivo')
+            
+            # Confirmar venta
+            reply = QMessageBox.question(
+                self, 
+                "Procesar Venta", 
+                f"¿Procesar venta por {formatear_precio(self.total)}?\nMétodo de pago: {metodo_pago.upper()}",
+                QMessageBox.Yes | QMessageBox.No
             )
             
-            if success:
-                # Preguntar si desea emitir comprobante
-                if self.datos_cliente:
-                    tipo_comp = "Boleta" if self.datos_cliente.get('tipo') == 'boleta' else "Factura"
-                    cliente_info = self.datos_cliente.get('nombre_completo') if tipo_comp == "Boleta" else self.datos_cliente.get('razon_social')
-
-                    reply_comp = QMessageBox.question(
-                        self,
-                        "Emitir Comprobante",
-                        f"Venta exitosa ✅\nID: {venta_id}\n\n¿Emitir {tipo_comp} para:\n{cliente_info}?",
-                        QMessageBox.Yes | QMessageBox.No
-                    )
-
-                    if reply_comp == QMessageBox.Yes:
-                        self.emitirComprobante(venta_id)
+            if reply == QMessageBox.Yes:
+                # Procesar la venta usando el SERVICE con el método de pago
+                success, venta_id, mensaje = self.venta_service.procesar_venta_completa(
+                    carrito=self.carrito,
+                    empleado_id=1,  # Por ahora usamos empleado 1 por defecto
+                    metodo_pago=metodo_pago
+                )
+                
+                if success:
+                    # Emitir comprobante automáticamente
+                    self.emitirComprobanteIntegrado(venta_id, datos_cliente, metodo_pago)
+                    
+                    # Limpiar y recargar
+                    self.limpiarCarrito()
+                    self.cargarProductos()  # Recargar para actualizar stock
                 else:
-                    QMessageBox.information(self, "Venta Exitosa",
-                                           f"✅ {mensaje}\nID: {venta_id}\n\n💡 Tip: Consulta DNI/RUC antes de vender para emitir comprobante automáticamente.")
+                    QMessageBox.critical(self, "Error en Venta", f"❌ {mensaje}")
+        else:
+            # Usuario canceló el diálogo
+            pass
 
-                self.limpiarCarrito()
-                self.cargarProductos()  # Recargar para actualizar stock
-            else:
-                QMessageBox.critical(self, "Error en Venta", f"❌ {mensaje}")
-
+# → Emitir comprobante (boleta o factura) para una venta existente
     def emitirComprobante(self, venta_id):
-        """Emite comprobante (boleta o factura) para una venta"""
         try:
             tipo = 'boleta' if self.datos_cliente.get('tipo') == 'boleta' else 'factura'
             resultado = self.comprobante_service.emitir_comprobante(venta_id, tipo, self.datos_cliente)
@@ -779,58 +711,59 @@ class VentasFrame(QWidget):
                 QMessageBox.warning(self, "Error", f"No se pudo emitir el comprobante:\n{resultado.get('error', 'Error desconocido')}")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error al emitir comprobante:\n{str(e)}")
-
-    def consultarDocumento(self):
-        """Consulta DNI o RUC usando la API"""
-        tipo = self.tipo_doc_combo.currentText()
-        numero = self.num_doc_input.text().strip()
-
-        # Validaciones usando helpers
-        if tipo == 'DNI':
-            valido, mensaje = validar_dni(numero)
-            if not valido:
-                self.resultado_api.setText(f"⚠️ {mensaje}")
-                self.resultado_api.setStyleSheet("font-size: 11px; color: #e74c3c; padding: 5px; background-color: #fadbd8; border-radius: 3px;")
-                return
-        else:  # RUC
-            valido, mensaje = validar_ruc(numero)
-            if not valido:
-                self.resultado_api.setText(f"⚠️ {mensaje}")
-                self.resultado_api.setStyleSheet("font-size: 11px; color: #e74c3c; padding: 5px; background-color: #fadbd8; border-radius: 3px;")
-                return
-
-        # Consultar
-        self.resultado_api.setText("🔄 Consultando...")
-        self.resultado_api.setStyleSheet("font-size: 11px; color: #3498db; padding: 5px; background-color: #d6eaf8; border-radius: 3px;")
-
-        resultado = self.comprobante_service.obtener_datos_documento(numero, tipo)
-
-        if resultado.get('success'):
-            origen = resultado.get('origen', 'api')
-            icono_origen = "💾" if origen == 'cache' else "🌐"
-
-            if tipo == 'DNI':
-                nombre = resultado.get('nombre_completo', 'N/A')
-                texto = f"✅ {icono_origen} {nombre}"
-                self.datos_cliente = {
-                    'num_documento': numero,
-                    'nombre_completo': nombre,
-                    'tipo': 'boleta'
+    
+    def emitirComprobanteIntegrado(self, venta_id, datos_cliente, metodo_pago):
+        """Emite comprobante automáticamente con datos capturados del diálogo integrado"""
+        try:
+            # Si datos_cliente es None, usar cliente genérico
+            if not datos_cliente:
+                datos_cliente = {
+                    'tipo': 'boleta',
+                    'num_documento': '00000000',
+                    'nombre_completo': 'Cliente Genérico'
                 }
-            else:  # RUC
-                razon = resultado.get('razon_social', 'N/A')
-                texto = f"✅ {icono_origen} {razon[:40]}..." if len(razon) > 40 else f"✅ {icono_origen} {razon}"
-                self.datos_cliente = {
-                    'ruc': numero,
-                    'razon_social': razon,
-                    'direccion': resultado.get('direccion', ''),
-                    'tipo': 'factura'
-                }
-
-            self.resultado_api.setText(texto)
-            self.resultado_api.setStyleSheet("font-size: 11px; color: #27ae60; padding: 5px; background-color: #d5f4e6; border-radius: 3px;")
-        else:
-            error = resultado.get('error', 'Error desconocido')
-            self.resultado_api.setText(f"❌ {error}")
-            self.resultado_api.setStyleSheet("font-size: 11px; color: #e74c3c; padding: 5px; background-color: #fadbd8; border-radius: 3px;")
-            self.datos_cliente = None
+            tipo = datos_cliente.get('tipo', 'boleta')
+            resultado = self.comprobante_service.emitir_comprobante(
+                venta_id, 
+                tipo, 
+                datos_cliente, 
+                metodo_pago
+            )
+            
+            if resultado.get('success'):
+                tipo_comp = "Boleta" if tipo == 'boleta' else "Factura"
+                serie = resultado.get('serie', '')
+                numero = resultado.get('numero', '')
+                codigo = resultado.get('codigo', '')
+                pdf_path = resultado.get('pdf_path', '')
+                xml_path = resultado.get('xml_path', '')
+                
+                # Construir mensaje informativo
+                mensaje = f"{tipo_comp} emitida correctamente\n\n"
+                mensaje += f"Serie-Número: {serie}-{numero}\n"
+                mensaje += f"Código: {codigo}\n"
+                mensaje += f"Método de pago: {metodo_pago.upper()}\n\n"
+                
+                if pdf_path:
+                    mensaje += f"📄 PDF: {pdf_path}\n"
+                if xml_path:
+                    mensaje += f"📝 XML: {xml_path}\n"
+                
+                QMessageBox.information(
+                    self,
+                    "Venta y Comprobante Exitoso",
+                    mensaje
+                )
+            else:
+                error = resultado.get('error', 'Error desconocido')
+                QMessageBox.warning(
+                    self, 
+                    "Venta exitosa, error en comprobante", 
+                    f"La venta se procesó correctamente (ID: {venta_id})\n\nX - Pero hubo un error al generar el comprobante:\n{error}"
+                )
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                "Error en comprobante",
+                f"La venta se procesó correctamente (ID: {venta_id})\n\nX - Error al emitir comprobante:\n{str(e)}"
+            )
