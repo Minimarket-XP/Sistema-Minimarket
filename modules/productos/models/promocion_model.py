@@ -1,7 +1,6 @@
 from datetime import datetime
 from core.database import db
 
-
 class PromocionModel:
     def __init__(self):
         pass
