@@ -364,6 +364,7 @@ class Database:
                 VALUES ('admin', ?, 'activo', ?)
             ''', (hashed_password, admin_empleado_id))
 
+
             # Insertar categorías
             categorias_basicas = [
                 ('Alimentos básicos', 'Productos esenciales para el consumo diario'),

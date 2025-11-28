@@ -834,4 +834,3 @@ class VentasFrame(QWidget):
             self.resultado_api.setText(f"❌ {error}")
             self.resultado_api.setStyleSheet("font-size: 11px; color: #e74c3c; padding: 5px; background-color: #fadbd8; border-radius: 3px;")
             self.datos_cliente = None
-

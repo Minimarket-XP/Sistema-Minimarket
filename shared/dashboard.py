@@ -110,6 +110,7 @@ class Dashboard(QMainWindow):
         # Botones principales
         botones = [
             ("Ventas", self.mostrar_ventas),
+            ("Clientes", self.mostrar_clientes),
             ("Inventario", self.mostrar_inventario),
             ("Promociones", self.mostrar_promociones),
             ("Alertas", self.mostrar_alertas),

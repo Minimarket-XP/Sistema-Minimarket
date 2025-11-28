@@ -1,6 +1,7 @@
 ## Formularios y componentes reutilizables
 
 import os
+import re
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                              QLineEdit, QPushButton, QComboBox, QFileDialog, 
                              QMessageBox, QInputDialog, QFrame)
@@ -458,3 +459,154 @@ class ImagenViewer(QLabel):
             }
         """)
         self.imagen_actual = None
+
+class ClienteForm(QDialog):
+    def __init__(self, parent, title="Cliente", cliente_data=None):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setFixedSize(520, 460)
+        self.setModal(True)
+        self.entries = {}
+        self._crear_interfaz()
+        if cliente_data:
+            self._cargar_datos(cliente_data)
+
+    def _crear_interfaz(self):
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(15)
+        titulo_label = QLabel(self.windowTitle())
+        titulo_label.setAlignment(Qt.AlignCenter)
+        titulo_label.setStyleSheet(f"""
+            QLabel {{
+                color: {THEME_COLOR};
+                font-size: 18px;
+                font-weight: bold;
+                font-family: Arial;
+                margin-bottom: 10px;
+            }}
+        """)
+        main_layout.addWidget(titulo_label)
+        campos = [
+            ("Nombre", ""),
+            ("Dirección", ""),
+            ("Teléfono", ""),
+            ("Email", ""),
+        ]
+        tipo_layout = QHBoxLayout()
+        tipo_label = QLabel("Tipo Documento:")
+        tipo_label.setFixedWidth(130)
+        tipo_label.setStyleSheet("font-weight: bold; color: #333;")
+        self.tipo_cb = QComboBox()
+        self.tipo_cb.addItems(["DNI", "RUC", "GENERICO"])
+        self.tipo_cb.setStyleSheet(self._input_style())
+        tipo_layout.addWidget(tipo_label)
+        tipo_layout.addWidget(self.tipo_cb)
+        main_layout.addLayout(tipo_layout)
+        doc_layout = QHBoxLayout()
+        doc_label = QLabel("N° Documento:")
+        doc_label.setFixedWidth(130)
+        doc_label.setStyleSheet("font-weight: bold; color: #333;")
+        self.doc_input = QLineEdit()
+        self.doc_input.setStyleSheet(self._input_style())
+        doc_layout.addWidget(doc_label)
+        doc_layout.addWidget(self.doc_input)
+        main_layout.addLayout(doc_layout)
+        for label, default in campos:
+            campo_layout = QHBoxLayout()
+            label_widget = QLabel(label + ":")
+            label_widget.setFixedWidth(130)
+            label_widget.setStyleSheet("font-weight: bold; color: #333;")
+            entry = QLineEdit()
+            entry.setStyleSheet(self._input_style())
+            entry.setText(default)
+            self.entries[label] = entry
+            campo_layout.addWidget(label_widget)
+            campo_layout.addWidget(entry)
+            main_layout.addLayout(campo_layout)
+        botones_layout = QHBoxLayout()
+        btn_cancelar = QPushButton("Cancelar")
+        btn_cancelar.setStyleSheet("""
+            QPushButton {
+                background-color: #6c757d;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 8px 12px;
+                font-size: 11px;
+            }
+            QPushButton:hover {
+                background-color: #5a6268;
+            }
+        """)
+        btn_cancelar.clicked.connect(self.reject)
+        btn_guardar = QPushButton("Guardar")
+        btn_guardar.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {THEME_COLOR};
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 10px 20px;
+                font-size: 12px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: {THEME_COLOR_HOVER};
+            }}
+        """)
+        btn_guardar.clicked.connect(self.validarYGuardar)
+        botones_layout.addWidget(btn_cancelar)
+        botones_layout.addWidget(btn_guardar)
+        main_layout.addLayout(botones_layout)
+
+    def _input_style(self):
+        return """
+            QLineEdit, QComboBox {
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                padding: 8px;
+                font-size: 12px;
+            }
+            QLineEdit:focus, QComboBox:focus {
+                border: 2px solid #4285F4;
+            }
+        """
+
+    def _cargar_datos(self, cliente):
+        if not cliente:
+            return
+        tipo = str(cliente.get('tipo_documento', '')).upper()
+        idx = self.tipo_cb.findText(tipo) if tipo else -1
+        if idx >= 0:
+            self.tipo_cb.setCurrentIndex(idx)
+        self.doc_input.setText(str(cliente.get('num_documento', '')))
+        self.entries["Nombre"].setText(str(cliente.get('nombre', '')))
+        self.entries["Dirección"].setText(str(cliente.get('direccion', '')))
+        self.entries["Teléfono"].setText(str(cliente.get('telefono', '')))
+        self.entries["Email"].setText(str(cliente.get('email', '')))
+
+    def validarDatos(self):
+        tipo = self.tipo_cb.currentText().strip().upper()
+        numero = self.doc_input.text().strip()
+        nombre = self.entries["Nombre"].text().strip()
+        if not nombre:
+            QMessageBox.critical(self, "Error", "El nombre es obligatorio.")
+            return None
+        if tipo == 'DNI' and not re.fullmatch(r"\d{8}", numero):
+            QMessageBox.critical(self, "Error", "El DNI debe tener 8 dígitos.")
+            return None
+        if tipo == 'RUC' and not re.fullmatch(r"\d{11}", numero):
+            QMessageBox.critical(self, "Error", "El RUC debe tener 11 dígitos.")
+            return None
+        return {
+            'tipo_documento': tipo,
+            'num_documento': numero,
+            'nombre': nombre,
+            'direccion': self.entries["Dirección"].text().strip(),
+            'telefono': self.entries["Teléfono"].text().strip(),
+            'email': self.entries["Email"].text().strip()
+        }
+
+    def validarYGuardar(self):
+        raise NotImplementedError

@@ -104,4 +104,3 @@ def formatear_documento(tipo, numero): # → Formatea DNI/RUC para mostrar
     elif tipo == 'RUC' and len(numero) == 11:
         return f"{numero[:2]}-{numero[2:10]}-{numero[10]}"
     return numero
-
