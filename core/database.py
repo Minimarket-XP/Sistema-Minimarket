@@ -621,6 +621,32 @@ class Database:
             print(f"Error verificando contraseña: {e}")
             return False
 
+    def obtener_reporte_comprobantes(self, fecha_inicio=None, fecha_fin=None):
+        """Obtiene una lista de comprobantes, filtrados por fecha si se especifica."""
+        # Query base
+        query = """
+        SELECT 
+            c.id, c.tipo, c.serie, c.numero, c.fecha_emision, v.total, c.estado_sunat, cl.nombre 
+        FROM 
+            comprobantes c
+        JOIN 
+            ventas v ON c.venta_id = v.id
+        LEFT JOIN 
+            clientes cl ON c.cliente_id = cl.id
+        """
+        
+        # Agregar filtro de fechas si se envían
+        params = []
+        if fecha_inicio and fecha_fin:
+            # Filtramos por la fecha (ignorando la hora para el rango)
+            query += " WHERE DATE(c.fecha_emision) BETWEEN ? AND ?"
+            params = [fecha_inicio, fecha_fin]
+            
+        query += " ORDER BY c.fecha_emision DESC"
+        
+        # Ejecutar
+        return self.execute_query(query, params if params else None)
+
     # Triggers → Lógica de negocio automatizada
     def triggers(self, cursor):
         

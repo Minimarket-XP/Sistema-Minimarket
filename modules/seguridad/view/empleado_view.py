@@ -283,7 +283,7 @@ class EmpleadosWidget(QWidget):
                 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error al cargar empleados: {str(e)}")
-    
+
     def crear_empleado(self):
         dialog = CrearEmpleadoDialog(self)
         if dialog.exec_() == QDialog.Accepted:
