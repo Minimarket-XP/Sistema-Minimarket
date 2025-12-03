@@ -675,7 +675,7 @@ class VentasFrame(QWidget):
             
             if reply == QMessageBox.Yes:
                 # Procesar la venta usando el SERVICE con el método de pago
-                success, venta_id, mensaje = self.venta_service.procesar_venta_completa(
+                success, venta_id, mensaje, alertas = self.venta_service.procesar_venta_completa(
                     carrito=self.carrito,
                     empleado_id=1,  # Por ahora usamos empleado 1 por defecto
                     metodo_pago=metodo_pago
@@ -683,7 +683,7 @@ class VentasFrame(QWidget):
                 
                 if success:
                     # Emitir comprobante automáticamente
-                    self.emitirComprobanteIntegrado(venta_id, datos_cliente, metodo_pago)
+                    self.emitirComprobanteIntegrado(venta_id, datos_cliente, metodo_pago, alertas)
                     
                     # Limpiar y recargar
                     self.limpiarCarrito()
@@ -712,7 +712,7 @@ class VentasFrame(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error al emitir comprobante:\n{str(e)}")
     
-    def emitirComprobanteIntegrado(self, venta_id, datos_cliente, metodo_pago):
+    def emitirComprobanteIntegrado(self, venta_id, datos_cliente, metodo_pago, alertas=None):
         """Emite comprobante automáticamente con datos capturados del diálogo integrado"""
         try:
             # Si datos_cliente es None, usar cliente genérico
@@ -748,6 +748,11 @@ class VentasFrame(QWidget):
                     mensaje += f"📄 PDF: {pdf_path}\n"
                 if xml_path:
                     mensaje += f"📝 XML: {xml_path}\n"
+                
+                # Agregar alertas si existen
+                if alertas:
+                    mensaje += "\n-----------------------------------\n"
+                    mensaje += "\n".join(alertas)
                 
                 QMessageBox.information(
                     self,

@@ -23,7 +23,23 @@ class VentaService:
         try:
             # Validaciones de negocio
             if not carrito:
-                return False, None, "El carrito está vacío"
+                return False, None, "El carrito está vacío", []
+
+            # Capturar stock inicial para alertas
+            from modules.productos.models.producto_model import ProductoModel
+            pm_temp = ProductoModel()
+            stock_inicial_map = {}
+            try:
+                for item in carrito:
+                    df_temp = pm_temp.obtenerPorId(item['id'])
+                    if not df_temp.empty:
+                        stock_inicial_map[item['id']] = {
+                            'stock': df_temp['Stock'].iloc[0],
+                            'minimo': df_temp['Stock Mínimo'].iloc[0],
+                            'nombre': df_temp['Nombre'].iloc[0]
+                        }
+            except Exception as e:
+                print(f"Error capturando stock inicial: {e}")
 
             # Generar ID y calcular totales
             venta_id = self.generar_id_venta()
@@ -69,7 +85,31 @@ class VentaService:
 
             conexion.commit()
             conexion.close()
-            return True, venta_id, f"Venta {venta_id} procesada exitosamente"
+
+            # Verificar alertas de stock (Después de commit para ver stock actualizado)
+            from modules.productos.models.producto_model import ProductoModel
+            from modules.productos.service.alertas_service import AlertasService
+            
+            alertas = []
+            try:
+                producto_model = ProductoModel()
+                alertas_service = AlertasService()
+                
+                for item in carrito:
+                    id_prod = item['id']
+                    # Verificar si tenemos datos iniciales para comparar
+                    if id_prod in stock_inicial_map:
+                        df_nuevo = producto_model.obtenerPorId(id_prod)
+                        if not df_nuevo.empty:
+                            stock_nuevo = df_nuevo['Stock'].iloc[0]
+                            datos_ini = stock_inicial_map[id_prod]
+                            
+                            if alertas_service.verificar_cambio_stock(datos_ini['stock'], stock_nuevo, datos_ini['minimo']):
+                                alertas.append(f"⚠️ ALERTA: El stock de '{datos_ini['nombre']}' ha bajado del mínimo ({datos_ini['minimo']}). Stock actual: {stock_nuevo}")
+            except Exception as e:
+                print(f"Error verificando alertas: {e}")
+
+            return True, venta_id, f"Venta {venta_id} procesada exitosamente", alertas
 
         except Exception as e:
             if conexion:
@@ -79,13 +119,13 @@ class VentaService:
             # Interpretar errores de los triggers
             error_msg = str(e)
             if 'Stock insuficiente' in error_msg:
-                return False, None, "Error: Stock insuficiente para uno o más productos"
+                return False, None, "Error: Stock insuficiente para uno o más productos", []
             elif 'precio unitario' in error_msg.lower():
-                return False, None, "Error: El precio debe ser mayor a 0"
+                return False, None, "Error: El precio debe ser mayor a 0", []
             elif 'cantidad debe ser mayor' in error_msg.lower():
-                return False, None, "Error: La cantidad debe ser mayor a 0"
+                return False, None, "Error: La cantidad debe ser mayor a 0", []
             else:
-                return False, None, f"Error al procesar venta: {error_msg}"
+                return False, None, f"Error al procesar venta: {error_msg}", []
 
 # → Obtiene información completa de una venta.
     def obtener_venta(self, venta_id):
