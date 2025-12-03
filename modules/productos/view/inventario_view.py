@@ -3,12 +3,14 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QPushButton, QTableWidget, QTableWidgetItem, 
                              QHeaderView, QMessageBox, QAbstractItemView)
+from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt
 import pandas as pd
 from modules.productos.models.producto_model import ProductoModel
 from shared.components.forms import ProductoForm, ImagenViewer
 from shared.helpers import formatear_precio
 from core.config import *
+from modules.productos.view.alertas_view import AlertasStockView
 
 # → Vista principal de inventario
 class InventarioFrame(QWidget):      
@@ -122,10 +124,14 @@ class InventarioFrame(QWidget):
         btn_eliminar = self.crearBoton("Eliminar Producto", ERROR_COLOR, self.eliminarProducto)
         btn_refrescar = self.crearBoton("Refrescar", "#2980b9", self.mostrarInventario)
         
+        # Botón de alertas
+        btn_alertas = self.crearBoton("⚠️ Alertas Stock", "#e74c3c", self.mostrarAlertas)
+        
         botones_layout.addWidget(btn_agregar)
         botones_layout.addWidget(btn_modificar)
         botones_layout.addWidget(btn_eliminar)
         botones_layout.addWidget(btn_refrescar)
+        botones_layout.addWidget(btn_alertas)
         botones_layout.addStretch()  # Espaciador
         
         main_layout.addLayout(botones_layout)
@@ -198,15 +204,38 @@ class InventarioFrame(QWidget):
                 str(stock_minimo)
             ]
             
+            # Determinar si hay stock bajo
+            es_stock_bajo = stock_actual < stock_minimo
+            
             for col_idx, value in enumerate(values):
                 item = QTableWidgetItem(str(value))
                 item.setTextAlignment(Qt.AlignCenter)
                 # IMPORTANTE: Permitir selección completa
                 item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemNeverHasChildren)
+                
+                # Resaltar si stock es bajo
+                if es_stock_bajo:
+                    item.setBackground(QColor("#e74c3c")) # Rojo
+                    item.setForeground(Qt.white)
+                    item.setFont(self._get_bold_font())
+                
                 self.tabla.setItem(row_idx, col_idx, item)
         
         # Limpiar visor de imagen
         self.img_viewer.limpiar()
+
+    def _get_bold_font(self):
+        from PyQt5.QtGui import QFont
+        font = QFont()
+        font.setBold(True)
+        return font
+
+    def mostrarAlertas(self):
+        try:
+            dialog = AlertasStockView(self)
+            dialog.exec_()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Error al mostrar alertas: {e}")
     
     def mostrarImagen(self):
         try:
