@@ -10,21 +10,21 @@ from shared.components.forms import ProductoForm, ImagenViewer
 from shared.helpers import formatear_precio
 from core.config import *
 
-# → Interfaz para gestionar el inventario de productos
+# → Vista principal de inventario
 class InventarioFrame(QWidget):      
     def __init__(self, parent):
         super().__init__(parent)
         
         self.producto_model = ProductoModel()
-        self.crearInterfaz()
+        self.crear_interfaz()
         self.mostrarInventario()
     
-    def crearInterfaz(self):
+    def crear_interfaz(self):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(15)
         
-        # Título
+        # Título de la interfaz
         titulo = QLabel("Inventario")
         titulo.setAlignment(Qt.AlignCenter)
         titulo.setStyleSheet(f"""

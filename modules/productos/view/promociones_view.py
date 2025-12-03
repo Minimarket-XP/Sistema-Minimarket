@@ -7,6 +7,7 @@ from modules.productos.models.categoria_model import CategoriaModel
 from modules.productos.models.producto_model import ProductoModel
 from modules.productos.view.inventario_view import TablaNoEditable
 from core.database import db
+from core.config import *
 
 # Estilos reutilizables (coincidir con estilo de gestión de devoluciones)
 FRAME_STYLE = """QFrame { background-color: #f0f0f0; border-radius: 3px; }"""
@@ -44,23 +45,34 @@ TABLE_STYLE = """
             }
 """
 
-
+# → Vista de gestión de promociones
 class PromocionesFrame(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent):
         super().__init__(parent)
-        self.prom_model = PromocionModel()
-        self.init_ui()
+
+        self.promo_model = PromocionModel()
+        self.crear_interfaz()
         self.cargar_promociones()
 
-    def init_ui(self):
+    def crear_interfaz(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10,10,10,10)
         layout.setSpacing(10)
 
+    # Título de la interfaz 
         titulo = QLabel("Promociones")
-        titulo.setAlignment(Qt.AlignLeft)
-        titulo.setStyleSheet("font-size:22px; font-weight:bold; color: #1f618d;")
-        layout.addWidget(titulo)
+        titulo.setAlignment(Qt.AlignCenter)
+        titulo.setStyleSheet(f"""
+            QLabel {{
+                color: {THEME_COLOR};
+                font-size:25px;
+                font-weight:bold;
+                font-family: Arial;
+                margin-bottom: 10px;
+            }}
+        """)
+        layout.addWidget(titulo) # → Agregar título al layout principal
+        
         # Form crear promocion (más claro y vertical)
         # Panel superior: crear promoción
         from PyQt5.QtWidgets import QFrame
@@ -220,7 +232,7 @@ class PromocionesFrame(QWidget):
             QMessageBox.warning(self, "Validación", "La fecha de inicio debe ser anterior a la fecha fin")
             return
         try:
-            idp = self.prom_model.crear(nombre, desc, pct, inicio, fin, estado='activa')
+            idp = self.promo_model.crear(nombre, desc, pct, inicio, fin, estado='activa')
             QMessageBox.information(self, "Éxito", f"Promoción creada: {idp}")
             self.cargar_promociones()
             # recargar productos por si se mostró id_prom en pantalla
@@ -249,7 +261,7 @@ class PromocionesFrame(QWidget):
             print("Error cargando productos para autocompletar:", e)
 
     def cargar_promociones(self):
-        promos = self.prom_model.obtener_todas()
+        promos = self.promo_model.obtener_todas()
         self.tabla.setRowCount(len(promos))
         for i, p in enumerate(promos):
             id_item = QTableWidgetItem(str(p['id_promocion']))
@@ -311,7 +323,7 @@ class PromocionesFrame(QWidget):
     def toggle_estado(self, id_prom, estado_actual):
         nuevo = 'activa' if estado_actual != 'activa' else 'inactiva'
         try:
-            self.prom_model.actualizar_estado(id_prom, nuevo)
+            self.promo_model.actualizar_estado(id_prom, nuevo)
             QMessageBox.information(self, "Promoción", f"Estado actualizado a {nuevo}")
             self.cargar_promociones()
         except Exception as e:
@@ -322,7 +334,7 @@ class PromocionesFrame(QWidget):
         if resp != QMessageBox.Yes:
             return
         try:
-            self.prom_model.eliminar(id_prom)
+            self.promo_model.eliminar(id_prom)
             QMessageBox.information(self, "Promoción", "Promoción eliminada")
             self.cargar_promociones()
         except Exception as e:
@@ -330,11 +342,11 @@ class PromocionesFrame(QWidget):
 
     def editar_promocion(self, id_prom):
         try:
-            data = self.prom_model.obtener_por_id(id_prom)
+            data = self.promo_model.obtener_por_id(id_prom)
             if not data:
                 QMessageBox.warning(self, "Editar", "Promoción no encontrada")
                 return
-            dlg = EditPromocionDialog(self, self.prom_model, data)
+            dlg = EditPromocionDialog(self, self.promo_model, data)
             if dlg.exec_() == QDialog.Accepted:
                 self.cargar_promociones()
         except Exception as e:
@@ -362,7 +374,7 @@ class PromocionesFrame(QWidget):
                 QMessageBox.warning(self, "Validación", "No se encontró el producto especificado")
                 return
 
-            self.prom_model.asignar_producto(int(id_prom), id_producto)
+            self.promo_model.asignar_producto(int(id_prom), id_producto)
             QMessageBox.information(self, "Asignación", f"Promoción {id_prom} asignada a producto {id_producto}")
             # limpiar campo producto
             self.input_producto.clear()
@@ -376,21 +388,21 @@ class PromocionesFrame(QWidget):
             QMessageBox.warning(self, "Validación", "Proporciona ID promoción y selecciona categoría")
             return
         try:
-            self.prom_model.asignar_categoria(int(id_prom), int(id_cat))
+            self.promo_model.asignar_categoria(int(id_prom), int(id_cat))
             QMessageBox.information(self, "Asignación", "Promoción asignada a la categoría")
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
 
 
 class EditPromocionDialog(QDialog):
-    def __init__(self, parent, prom_model, promocion):
+    def __init__(self, parent, promo_model, promocion):
         super().__init__(parent)
         self.setWindowTitle("Editar promoción")
-        self.prom_model = prom_model
+        self.promo_model = promo_model
         self.promocion = promocion
-        self.init_ui()
+        self.crear_interfaz()
 
-    def init_ui(self):
+    def crear_interfaz(self):
         from PyQt5.QtWidgets import QFormLayout
         layout = QFormLayout(self)
         self.input_nombre = QLineEdit(self.promocion['nombre'])
@@ -450,7 +462,7 @@ class EditPromocionDialog(QDialog):
             QMessageBox.warning(self, 'Validación', 'Fecha inicio debe ser anterior a fecha fin')
             return
         try:
-            self.prom_model.actualizar(
+            self.promo_model.actualizar(
                 int(self.promocion['id_promocion']),
                 nombre=nombre,
                 descripcion=self.input_desc.text().strip(),
@@ -473,7 +485,7 @@ class EditPromocionDialog(QDialog):
                 w = item.widget()
                 if w:
                     w.deleteLater()
-            cats = self.prom_model.obtener_categorias_asignadas(self.promocion['id_promocion'])
+            cats = self.promo_model.obtener_categorias_asignadas(self.promocion['id_promocion'])
             if not cats:
                 self.assigned_cat_layout.addWidget(QLabel('(Sin categorías asignadas)'))
                 return
@@ -496,7 +508,7 @@ class EditPromocionDialog(QDialog):
 
     def quitar_categoria(self, id_categoria):
         try:
-            self.prom_model.remover_categoria(int(self.promocion['id_promocion']), int(id_categoria))
+            self.promo_model.remover_categoria(int(self.promocion['id_promocion']), int(id_categoria))
             QMessageBox.information(self, 'Asignación', 'Categoría removida de la promoción')
             self.load_assigned_categories()
         except Exception as e:
