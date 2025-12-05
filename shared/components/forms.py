@@ -354,6 +354,9 @@ class ProductoForm(QDialog):
             self.img_info_label.setText(os.path.basename(path))
     
     def validarDatos(self):
+        from shared.helpers import validar_precio_razonable, normalizar_nombre_producto
+        from modules.productos.models.producto_model import ProductoModel
+        
         nombre = self.entries["Nombre"].text().strip()
         categoria = self.categoria_cb.currentText().strip()
         
@@ -370,6 +373,12 @@ class ProductoForm(QDialog):
         stock, stock_valido = validar_numero(self.entries["Stock inicial"].text(), "int")
         stock_min, stock_min_valido = validar_numero(self.entries["Stock Mínimo"].text(), "int")
         
+        # Validar precio razonable
+        precio_ok, mensaje_precio = validar_precio_razonable(precio)
+        if not precio_ok:
+            QMessageBox.critical(self, "Error", mensaje_precio)
+            return None
+        
         if not precio_valido or precio <= 0:
             QMessageBox.critical(self, "Error", "El precio debe ser mayor que S/0.00")
             return None
@@ -381,6 +390,40 @@ class ProductoForm(QDialog):
         if not stock_min_valido or stock_min <= 0:
             QMessageBox.critical(self, "Error", "El stock mínimo debe ser un número entero valido mayor que 0.")
             return None
+        
+        # Validar que stock mínimo sea menor que stock inicial
+        if stock_min >= stock:
+            QMessageBox.critical(self, "Error", 
+                               f"El stock mínimo ({stock_min}) debe ser menor que el stock inicial ({stock}).")
+            return None
+        
+        # Verificar productos duplicados (normalización de nombres)
+        nombre_normalizado = normalizar_nombre_producto(nombre)
+        pm = ProductoModel()
+        df_productos = pm.obtener_todos()
+        
+        for _, producto in df_productos.iterrows():
+            nombre_existente = producto.get('Nombre', '')
+            nombre_existente_norm = normalizar_nombre_producto(nombre_existente)
+            
+            # Si es modificación, ignorar el producto actual
+            if hasattr(self, 'producto_id') and str(producto.get('ID')) == str(self.producto_id):
+                continue
+            
+            if nombre_normalizado == nombre_existente_norm:
+                respuesta = QMessageBox.question(
+                    self, 
+                    "Producto Similar Detectado",
+                    f"Ya existe un producto con nombre similar:\n\n"
+                    f"Existente: '{nombre_existente}'\n"
+                    f"Nuevo: '{nombre}'\n\n"
+                    f"¿Deseas continuar de todas formas?",
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No
+                )
+                if respuesta != QMessageBox.Yes:
+                    return None
+                break
         
         return {
             "Nombre": nombre,

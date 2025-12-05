@@ -683,6 +683,8 @@ class CrearEmpleadoDialog(QDialog):
                         break
     
     def validar_datos(self):
+        from core.database import db
+        
         # Validar campos obligatorios
         for campo, entry in self.entries.items():
             if not entry.text().strip():
@@ -691,6 +693,26 @@ class CrearEmpleadoDialog(QDialog):
                 QMessageBox.warning(self, "Error", f"El campo {campo} es obligatorio.")
                 entry.setFocus()
                 return False
+        
+        # Validar usuario único
+        username = self.entries["Usuario"].text().strip()
+        query = "SELECT id_usuario FROM usuarios WHERE usuario = ?"
+        params = [username]
+        
+        if self.es_edicion:
+            # Excluir el usuario actual de la búsqueda
+            query += " AND id_empleado != ?"
+            params.append(self.empleado_data['id_empleado'])
+        
+        usuario_existente = db.fetchone(query, tuple(params))
+        if usuario_existente:
+            QMessageBox.warning(
+                self, 
+                "Usuario Duplicado", 
+                f"El nombre de usuario '{username}' ya está en uso.\nPor favor, elige otro nombre de usuario."
+            )
+            self.entries["Usuario"].setFocus()
+            return False
         
         # Validar contraseña solo si es nuevo empleado o se está cambiando
         password = self.password_input.text().strip()

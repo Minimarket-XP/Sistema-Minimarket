@@ -571,6 +571,15 @@ class VentasFrame(QWidget):
             QMessageBox.warning(self, "Carrito vacío", "Agrega productos al carrito antes de procesar la venta")
             return
         
+        # Validar total mínimo de venta (S/0.50)
+        if self.total < 0.50:
+            QMessageBox.warning(
+                self, 
+                "Total Insuficiente", 
+                f"El total de la venta ({formatear_precio(self.total)}) debe ser mayor a S/0.50"
+            )
+            return
+        
         # Mostrar diálogo flotante para capturar datos del cliente y método de pago
         dialogo = DialogoComprobante(self, self.comprobante_service)
         

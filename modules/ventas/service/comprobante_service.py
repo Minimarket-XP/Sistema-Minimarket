@@ -80,7 +80,7 @@ class ComprobanteService:
             print(f"Consultando DNI: {numero}")
             print(f"URL: {url}")
             
-            response = requests.get(url, headers=headers, timeout=10)
+            response = requests.get(url, headers=headers, timeout=5)
             
             # Log de depuración
             print(f"Status Code: {response.status_code}")
@@ -131,7 +131,7 @@ class ComprobanteService:
             print(f"Consultando RUC: {numero}")
             print(f"URL: {url}")
             
-            response = requests.get(url, headers=headers, timeout=10)
+            response = requests.get(url, headers=headers, timeout=5)
             
             # Log de depuración
             print(f"Status Code: {response.status_code}")

@@ -98,3 +98,46 @@ def formatear_documento(tipo, numero):
     elif tipo == 'RUC' and len(numero) == 11:
         return f"{numero[:2]}-{numero[2:10]}-{numero[10]}"
     return numero
+
+# → Normaliza el nombre de un producto para comparación
+def normalizar_nombre_producto(nombre):
+    """
+    Normaliza un nombre de producto para evitar duplicados:
+    - Convierte a minúsculas
+    - Elimina espacios extra
+    - Elimina tildes
+    - Elimina caracteres especiales excepto números
+    Ejemplo: "Leche Gloria Azul 300 ml" → "lechegloriaazul300ml"
+    """
+    import unicodedata
+    import re
+    
+    # Convertir a minúsculas
+    nombre = nombre.lower()
+    
+    # Eliminar tildes
+    nombre = ''.join(
+        c for c in unicodedata.normalize('NFD', nombre)
+        if unicodedata.category(c) != 'Mn'
+    )
+    
+    # Eliminar todo excepto letras y números
+    nombre = re.sub(r'[^a-z0-9]', '', nombre)
+    
+    return nombre
+
+# → Valida que el precio esté dentro de un rango razonable
+def validar_precio_razonable(precio):
+    """
+    Valida que el precio sea razonable (no exceda S/10,000)
+    Retorna: (True/False, mensaje)
+    """
+    try:
+        precio_float = float(precio)
+        if precio_float <= 0:
+            return False, "El precio debe ser mayor a S/0.00"
+        if precio_float > 10000:
+            return False, "El precio no puede exceder S/10,000.00"
+        return True, "Precio válido"
+    except (ValueError, TypeError):
+        return False, "Precio no válido"

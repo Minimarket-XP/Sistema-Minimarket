@@ -273,9 +273,12 @@ class DialogoComprobante(QDialog):
             resultado = self.comprobante_service.obtener_datos_documento(numero, tipo)
             
             if resultado.get('success'):
+                origen = resultado.get('origen', 'api')
+                cache_info = " (Cache)" if origen == 'cache' else ""
+                
                 if tipo == 'DNI':
                     nombre = resultado.get('nombre_completo', '')
-                    self.resultado_label.setText(f"✓ {nombre}")
+                    self.resultado_label.setText(f"✓ {nombre}{cache_info}")
                     self.datos_cliente = {
                         'tipo': 'boleta',
                         'num_documento': numero,
@@ -284,7 +287,7 @@ class DialogoComprobante(QDialog):
                 else:  # RUC
                     razon = resultado.get('razon_social', '')
                     direccion = resultado.get('direccion', '')
-                    self.resultado_label.setText(f"✓ {razon}")
+                    self.resultado_label.setText(f"✓ {razon}{cache_info}")
                     self.datos_cliente = {
                         'tipo': 'factura',
                         'ruc': numero,

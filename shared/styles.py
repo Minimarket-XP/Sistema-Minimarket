@@ -38,7 +38,9 @@ TablaNoEditableCSS = """
                 background: #ccc;
                 min-height: 30px;
                 border-radius: 6px;
-                transition: background-color 0.3s ease;
+            }
+            QScrollBar::handle:vertical:hover{
+                background: #999;
             }
             QScrollBar:horizontal {
                 border: none;
@@ -51,7 +53,9 @@ TablaNoEditableCSS = """
                 background: #ccc;
                 min-width: 30px;
                 border-radius: 6px;
-                transition: background-color 0.3s ease;
+            }
+            QScrollBar::handle:horizontal:hover {
+                background: #999;
             }
         """
 
