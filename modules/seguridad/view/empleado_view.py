@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QDialogButtonBox, QGroupBox, QCheckBox)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
+from shared.styles import TITULO, TablaNoEditableCSS
 from modules.seguridad.services.empleado_service import EmpleadoService
 from core.config import *
 from modules.productos.view.inventario_view import TablaNoEditable
@@ -28,15 +29,7 @@ class EmpleadosWidget(QWidget):
         # Título
         titulo = QLabel("Gestión de Empleados")
         titulo.setAlignment(Qt.AlignCenter)
-        titulo.setStyleSheet(f"""
-            QLabel {{
-                color: {THEME_COLOR};
-                font-size: 24px;
-                font-weight: bold;
-                font-family: Roboto;
-                margin-bottom: 20px;
-            }}
-        """)
+        titulo.setStyleSheet(TITULO)
         layout.addWidget(titulo)
         
         # Botón para crear empleado (solo para admin)
@@ -62,46 +55,7 @@ class EmpleadosWidget(QWidget):
         
         # Tabla de empleados
         self.tabla_empleados = TablaNoEditable()
-        self.tabla_empleados.setStyleSheet("""
-            QTableWidget {
-                background-color: white;
-                border: 1px solid #ddd;
-                selection-background-color: #3498db;
-                selection-color: white;
-                gridline-color: #e0e0e0;
-                font-size: 14px;
-            }
-            QTableWidget::item {
-                padding: 8px;
-                border-bottom: 1px solid #eee;
-            }
-            QTableWidget::item:selected {
-                background-color: #3498db;
-                color: black;
-                font-weight: bold;
-            }
-            QTableWidget::item:hover {
-                background-color: #9CCDF0;
-            }
-            QHeaderView::section {
-                background-color: #e0e0e0;
-                border: 2px solid #ddd;
-                padding: 8px;
-                font-weight: bold;
-                font-size: 12px;
-            }
-            QScrollBar:vertical{
-                border: none;
-                background: #E3E3E3;
-                width: 12 px;
-                margin: 0px;
-            }
-            QScrollBar::handle:vertical{
-                background: #ccc;
-                min-height: 20px;
-                border-radius: 6px;
-            }
-        """)
+        self.tabla_empleados.setStyleSheet(TablaNoEditableCSS)
         # Configurar columnas
         columnas_empleados = ["ID", "Nombre", "Apellido", "Usuario", "Rol", "Activo", "Acciones"]
         self.tabla_empleados.setColumnCount(len(columnas_empleados))
@@ -283,7 +237,7 @@ class EmpleadosWidget(QWidget):
                 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error al cargar empleados: {str(e)}")
-    
+
     def crear_empleado(self):
         dialog = CrearEmpleadoDialog(self)
         if dialog.exec_() == QDialog.Accepted:
@@ -729,6 +683,8 @@ class CrearEmpleadoDialog(QDialog):
                         break
     
     def validar_datos(self):
+        from core.database import db
+        
         # Validar campos obligatorios
         for campo, entry in self.entries.items():
             if not entry.text().strip():
@@ -737,6 +693,26 @@ class CrearEmpleadoDialog(QDialog):
                 QMessageBox.warning(self, "Error", f"El campo {campo} es obligatorio.")
                 entry.setFocus()
                 return False
+        
+        # Validar usuario único
+        username = self.entries["Usuario"].text().strip()
+        query = "SELECT id_usuario FROM usuarios WHERE usuario = ?"
+        params = [username]
+        
+        if self.es_edicion:
+            # Excluir el usuario actual de la búsqueda
+            query += " AND id_empleado != ?"
+            params.append(self.empleado_data['id_empleado'])
+        
+        usuario_existente = db.fetchone(query, tuple(params))
+        if usuario_existente:
+            QMessageBox.warning(
+                self, 
+                "Usuario Duplicado", 
+                f"El nombre de usuario '{username}' ya está en uso.\nPor favor, elige otro nombre de usuario."
+            )
+            self.entries["Usuario"].setFocus()
+            return False
         
         # Validar contraseña solo si es nuevo empleado o se está cambiando
         password = self.password_input.text().strip()

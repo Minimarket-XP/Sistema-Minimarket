@@ -47,9 +47,14 @@ class VentaModel:
 
             # Detalles de la venta
             detalles = pd.read_sql_query('''
-                SELECT dv.*, p.nombre_producto as producto_nombre 
+                SELECT dv.id_detalle_venta, dv.id_venta, dv.id_producto, 
+                       dv.cantidad_detalle, dv.precio_unitario_detalle, 
+                       dv.descuento_aplicado, dv.subtotal_detalle,
+                       p.nombre_producto as producto_nombre,
+                       um.nombre_unidad
                 FROM detalle_venta dv
                 JOIN productos p ON dv.id_producto = p.id_producto
+                LEFT JOIN unidad_medida um ON p.id_unidad_medida = um.id_unidad_medida
                 WHERE dv.id_venta = ?
             ''', conexion, params=[venta_id])
             

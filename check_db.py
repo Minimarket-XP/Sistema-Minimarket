@@ -18,4 +18,9 @@ cursor.execute("SELECT id_rol, nombre_rol FROM rol")
 for row in cursor.fetchall():
     print(f"ID: {row[0]}, Rol: {row[1]}")
 
+print("\n=== PRODUCTOS ===")
+cursor.execute("SELECT id_producto, nombre_producto, precio_producto FROM productos")
+for row in cursor.fetchall():
+    print(f"ID: {row[0]}, Producto: {row[1]}, Precio: {row[2]}")
+
 conn.close()

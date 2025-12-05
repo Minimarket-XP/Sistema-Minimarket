@@ -1,6 +1,7 @@
 ## Formularios y componentes reutilizables
 
 import os
+import re
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                              QLineEdit, QPushButton, QComboBox, QFileDialog, 
                              QMessageBox, QInputDialog, QFrame)
@@ -353,6 +354,9 @@ class ProductoForm(QDialog):
             self.img_info_label.setText(os.path.basename(path))
     
     def validarDatos(self):
+        from shared.helpers import validar_precio_razonable, normalizar_nombre_producto
+        from modules.productos.models.producto_model import ProductoModel
+        
         nombre = self.entries["Nombre"].text().strip()
         categoria = self.categoria_cb.currentText().strip()
         
@@ -369,6 +373,12 @@ class ProductoForm(QDialog):
         stock, stock_valido = validar_numero(self.entries["Stock inicial"].text(), "int")
         stock_min, stock_min_valido = validar_numero(self.entries["Stock Mínimo"].text(), "int")
         
+        # Validar precio razonable
+        precio_ok, mensaje_precio = validar_precio_razonable(precio)
+        if not precio_ok:
+            QMessageBox.critical(self, "Error", mensaje_precio)
+            return None
+        
         if not precio_valido or precio <= 0:
             QMessageBox.critical(self, "Error", "El precio debe ser mayor que S/0.00")
             return None
@@ -380,6 +390,40 @@ class ProductoForm(QDialog):
         if not stock_min_valido or stock_min <= 0:
             QMessageBox.critical(self, "Error", "El stock mínimo debe ser un número entero valido mayor que 0.")
             return None
+        
+        # Validar que stock mínimo sea menor que stock inicial
+        if stock_min >= stock:
+            QMessageBox.critical(self, "Error", 
+                               f"El stock mínimo ({stock_min}) debe ser menor que el stock inicial ({stock}).")
+            return None
+        
+        # Verificar productos duplicados (normalización de nombres)
+        nombre_normalizado = normalizar_nombre_producto(nombre)
+        pm = ProductoModel()
+        df_productos = pm.obtener_todos()
+        
+        for _, producto in df_productos.iterrows():
+            nombre_existente = producto.get('Nombre', '')
+            nombre_existente_norm = normalizar_nombre_producto(nombre_existente)
+            
+            # Si es modificación, ignorar el producto actual
+            if hasattr(self, 'producto_id') and str(producto.get('ID')) == str(self.producto_id):
+                continue
+            
+            if nombre_normalizado == nombre_existente_norm:
+                respuesta = QMessageBox.question(
+                    self, 
+                    "Producto Similar Detectado",
+                    f"Ya existe un producto con nombre similar:\n\n"
+                    f"Existente: '{nombre_existente}'\n"
+                    f"Nuevo: '{nombre}'\n\n"
+                    f"¿Deseas continuar de todas formas?",
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No
+                )
+                if respuesta != QMessageBox.Yes:
+                    return None
+                break
         
         return {
             "Nombre": nombre,
@@ -458,3 +502,154 @@ class ImagenViewer(QLabel):
             }
         """)
         self.imagen_actual = None
+
+class ClienteForm(QDialog):
+    def __init__(self, parent, title="Cliente", cliente_data=None):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setFixedSize(520, 460)
+        self.setModal(True)
+        self.entries = {}
+        self._crear_interfaz()
+        if cliente_data:
+            self._cargar_datos(cliente_data)
+
+    def _crear_interfaz(self):
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(15)
+        titulo_label = QLabel(self.windowTitle())
+        titulo_label.setAlignment(Qt.AlignCenter)
+        titulo_label.setStyleSheet(f"""
+            QLabel {{
+                color: {THEME_COLOR};
+                font-size: 18px;
+                font-weight: bold;
+                font-family: Arial;
+                margin-bottom: 10px;
+            }}
+        """)
+        main_layout.addWidget(titulo_label)
+        campos = [
+            ("Nombre", ""),
+            ("Dirección", ""),
+            ("Teléfono", ""),
+            ("Email", ""),
+        ]
+        tipo_layout = QHBoxLayout()
+        tipo_label = QLabel("Tipo Documento:")
+        tipo_label.setFixedWidth(130)
+        tipo_label.setStyleSheet("font-weight: bold; color: #333;")
+        self.tipo_cb = QComboBox()
+        self.tipo_cb.addItems(["DNI", "RUC", "GENERICO"])
+        self.tipo_cb.setStyleSheet(self._input_style())
+        tipo_layout.addWidget(tipo_label)
+        tipo_layout.addWidget(self.tipo_cb)
+        main_layout.addLayout(tipo_layout)
+        doc_layout = QHBoxLayout()
+        doc_label = QLabel("N° Documento:")
+        doc_label.setFixedWidth(130)
+        doc_label.setStyleSheet("font-weight: bold; color: #333;")
+        self.doc_input = QLineEdit()
+        self.doc_input.setStyleSheet(self._input_style())
+        doc_layout.addWidget(doc_label)
+        doc_layout.addWidget(self.doc_input)
+        main_layout.addLayout(doc_layout)
+        for label, default in campos:
+            campo_layout = QHBoxLayout()
+            label_widget = QLabel(label + ":")
+            label_widget.setFixedWidth(130)
+            label_widget.setStyleSheet("font-weight: bold; color: #333;")
+            entry = QLineEdit()
+            entry.setStyleSheet(self._input_style())
+            entry.setText(default)
+            self.entries[label] = entry
+            campo_layout.addWidget(label_widget)
+            campo_layout.addWidget(entry)
+            main_layout.addLayout(campo_layout)
+        botones_layout = QHBoxLayout()
+        btn_cancelar = QPushButton("Cancelar")
+        btn_cancelar.setStyleSheet("""
+            QPushButton {
+                background-color: #6c757d;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 8px 12px;
+                font-size: 11px;
+            }
+            QPushButton:hover {
+                background-color: #5a6268;
+            }
+        """)
+        btn_cancelar.clicked.connect(self.reject)
+        btn_guardar = QPushButton("Guardar")
+        btn_guardar.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {THEME_COLOR};
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 10px 20px;
+                font-size: 12px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: {THEME_COLOR_HOVER};
+            }}
+        """)
+        btn_guardar.clicked.connect(self.validarYGuardar)
+        botones_layout.addWidget(btn_cancelar)
+        botones_layout.addWidget(btn_guardar)
+        main_layout.addLayout(botones_layout)
+
+    def _input_style(self):
+        return """
+            QLineEdit, QComboBox {
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                padding: 8px;
+                font-size: 12px;
+            }
+            QLineEdit:focus, QComboBox:focus {
+                border: 2px solid #4285F4;
+            }
+        """
+
+    def _cargar_datos(self, cliente):
+        if not cliente:
+            return
+        tipo = str(cliente.get('tipo_documento', '')).upper()
+        idx = self.tipo_cb.findText(tipo) if tipo else -1
+        if idx >= 0:
+            self.tipo_cb.setCurrentIndex(idx)
+        self.doc_input.setText(str(cliente.get('num_documento', '')))
+        self.entries["Nombre"].setText(str(cliente.get('nombre', '')))
+        self.entries["Dirección"].setText(str(cliente.get('direccion', '')))
+        self.entries["Teléfono"].setText(str(cliente.get('telefono', '')))
+        self.entries["Email"].setText(str(cliente.get('email', '')))
+
+    def validarDatos(self):
+        tipo = self.tipo_cb.currentText().strip().upper()
+        numero = self.doc_input.text().strip()
+        nombre = self.entries["Nombre"].text().strip()
+        if not nombre:
+            QMessageBox.critical(self, "Error", "El nombre es obligatorio.")
+            return None
+        if tipo == 'DNI' and not re.fullmatch(r"\d{8}", numero):
+            QMessageBox.critical(self, "Error", "El DNI debe tener 8 dígitos.")
+            return None
+        if tipo == 'RUC' and not re.fullmatch(r"\d{11}", numero):
+            QMessageBox.critical(self, "Error", "El RUC debe tener 11 dígitos.")
+            return None
+        return {
+            'tipo_documento': tipo,
+            'num_documento': numero,
+            'nombre': nombre,
+            'direccion': self.entries["Dirección"].text().strip(),
+            'telefono': self.entries["Teléfono"].text().strip(),
+            'email': self.entries["Email"].text().strip()
+        }
+
+    def validarYGuardar(self):
+        raise NotImplementedError
