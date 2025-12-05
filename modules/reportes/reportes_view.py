@@ -807,7 +807,7 @@ class ReportesFrame(QWidget):
             self.table_comprobantes.setHorizontalHeaderLabels(cols_comp)
             
             # Anchos fijos para las columnas
-            anchos_comprobantes = [60, 80, 140, 150, 350, 100, 110, 130, 120]
+            anchos_comprobantes = [60, 100, 140, 150, 350, 100, 110, 130, 120]
             for i, ancho in enumerate(anchos_comprobantes):
                 self.table_comprobantes.setColumnWidth(i, ancho)
             
