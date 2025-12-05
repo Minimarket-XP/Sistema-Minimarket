@@ -3,12 +3,16 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                              QPushButton, QTableWidget, QTableWidgetItem, 
                              QLineEdit, QSpinBox, QMessageBox, QFrame, 
-                             QAbstractItemView, QHeaderView, QDialog, QDialogButtonBox)
+                             QAbstractItemView, QHeaderView, QDialog, QDialogButtonBox,
+                             QComboBox, QGroupBox)
 from PyQt5.QtCore import Qt
 from core.config import *
 from modules.productos.models.producto_model import ProductoModel
 from modules.ventas.service.venta_service import VentaService
-from shared.helpers import formatear_precio
+from modules.ventas.service.comprobante_service import ComprobanteService
+from modules.ventas.view.dialogo_comprobante import DialogoComprobante
+from shared.helpers import formatear_precio, validar_dni, validar_ruc
+from shared.styles import TablaNoEditableCSS, TITULO
 from modules.productos.view.inventario_view import TablaNoEditable
 import pandas as pd
 from modules.productos.models.unidad_medida_model import UnidadMedidaModel
@@ -19,30 +23,24 @@ class VentasFrame(QWidget):
         
         self.producto_model = ProductoModel()
         self.venta_service = VentaService()  # Usar Service en vez de Model
+        self.comprobante_service = ComprobanteService()
         self.carrito = []  # Lista de productos en el carrito
         self.total = 0.0
-        
+        self.datos_cliente = None  # Para almacenar datos del cliente temporal
+
         self.crearInterfaz()
         self.cargarProductos()
     
     def crearInterfaz(self):
         # Layout principal vertical para incluir título arriba
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(15)
         
         # Título centrado arriba
         titulo = QLabel("Registro de Ventas")
         titulo.setAlignment(Qt.AlignCenter)
-        titulo.setStyleSheet(f"""
-            QLabel {{
-                color: {THEME_COLOR};
-                font-size: 28px;
-                font-weight: bold;
-                font-family: Roboto;
-                margin-bottom: 10px;
-            }}
-        """)
+        titulo.setStyleSheet(TITULO)
         main_layout.addWidget(titulo)
         
         # Layout horizontal para los paneles
@@ -73,7 +71,7 @@ class VentasFrame(QWidget):
         btn_limpiar = QPushButton("🧹")
         btn_limpiar.setStyleSheet("""
             QPushButton {
-                background-color: #0061fc;
+                background-color: #f39c12;
                 color: white;
                 border: none;
             }
@@ -90,46 +88,7 @@ class VentasFrame(QWidget):
         
         # Tabla de productos - DIRECTAMENTE SIN PANEL
         self.tabla_productos = TablaNoEditable()
-        self.tabla_productos.setStyleSheet("""
-            QTableWidget {
-                background-color: white;
-                border: 1px solid #ddd;
-                selection-background-color: #3498db;
-                selection-color: white;
-                gridline-color: #e0e0e0;
-                font-size: 14px;
-            }
-            QTableWidget::item {
-                padding: 8px;
-                border-bottom: 1px solid #eee;
-            }
-            QTableWidget::item:selected {
-                background-color: #3498db;
-                color: black;
-                font-weight: bold;
-            }
-            QTableWidget::item:hover {
-                background-color: #9CCDF0;
-            }
-            QHeaderView::section {
-                background-color: #e0e0e0;
-                border: 2px solid #ddd;
-                padding: 8px;
-                font-weight: bold;
-                font-size: 12px;
-            }
-            QScrollBar:vertical{
-                border: none;
-                background: #E3E3E3;
-                width: 12 px;
-                margin: 0px;
-            }
-            QScrollBar::handle:vertical{
-                background: #ccc;
-                min-height: 20px;
-                border-radius: 6px;
-            }
-        """)
+        self.tabla_productos.setStyleSheet(TablaNoEditableCSS)
 
         # Configurar tabla
         columnas = ["ID", "Nombre", "Precio", "Stock", "Acción"]        
@@ -162,53 +121,14 @@ class VentasFrame(QWidget):
         titulo_carrito = QLabel("🛒 Carrito de Compras")
         titulo_carrito.setStyleSheet(f"qproperty-alignment: 'AlignCenter'; color: {THEME_COLOR}; font-size: 22px; font-weight: bold; margin-bottom: 10px;")
         right_layout.addWidget(titulo_carrito)
-        
+
         # Tabla del carrito - DIRECTAMENTE SIN PANEL
         self.tabla_carrito = TablaNoEditable()
-        self.tabla_carrito.setColumnCount(5)
-        self.tabla_carrito.setHorizontalHeaderLabels(["Producto", "Cant.", "Precio", "Total", "Acción"]) 
-        self.tabla_carrito.setStyleSheet("""
-            QTableWidget {
-                background-color: white;
-                border: 1px solid #ddd;
-                selection-background-color: #3498db;
-                selection-color: white;
-                gridline-color: #e0e0e0;
-                font-size: 14px;
-            }
-            QTableWidget::item {
-                padding: 8px;
-                border-bottom: 1px solid #eee;
-            }
-            QTableWidget::item:selected {
-                background-color: #3498db;
-                color: black;
-                font-weight: bold;
-            }
-            QTableWidget::item:hover {
-                background-color: #9CCDF0;
-            }
-            QHeaderView::section {
-                background-color: #e0e0e0;
-                border: 2px solid #ddd;
-                padding: 8px;
-                font-weight: bold;
-                font-size: 12px;
-            }
-            QScrollBar:vertical{
-                border: none;
-                background: #E3E3E3;
-                width: 12 px;
-                margin: 0px;
-            }
-            QScrollBar::handle:vertical{
-                background: #ccc;
-                min-height: 20px;
-                border-radius: 6px;
-            }
-        """)
+        self.tabla_carrito.setColumnCount(6)
+        self.tabla_carrito.setHorizontalHeaderLabels(["Producto", "Cant.", "Precio", "Total", "Promoción", "Acción"]) 
+        self.tabla_carrito.setStyleSheet(TablaNoEditableCSS)
         
-        anchosC = [243, 57, 69, 85, 58]  # Producto, Cant., Precio, Total, Acción
+        anchosC = [220, 85, 80, 85, 100, 60]  # Producto, Cant., Precio, Total, Promoción, Acción
         for i, anchoC in enumerate(anchosC):
             self.tabla_carrito.setColumnWidth(i, anchoC)
         
@@ -268,6 +188,12 @@ class VentasFrame(QWidget):
         right_layout.addWidget(btn_procesar)
         right_layout.addWidget(btn_limpiar)
         
+        # Separador
+        linea = QFrame()
+        linea.setFrameShape(QFrame.HLine)
+        linea.setStyleSheet("background-color: #bdc3c7;")
+        right_layout.addWidget(linea)
+
         panels_layout.addLayout(right_layout, 1)
         
         main_layout.addLayout(panels_layout)
@@ -281,17 +207,17 @@ class VentasFrame(QWidget):
         info_layout = QHBoxLayout(info_frame)
         
         titulo = QLabel("Productos Disponibles")
-        titulo.setStyleSheet(f"color: {THEME_COLOR}; font-size: 22px; font-weight: bold;")
+        titulo.setStyleSheet(f"color: {THEME_COLOR}; font-size: 21px; font-weight: bold;")
         info_layout.addWidget(titulo)
         info_layout.addStretch()
         
         ventas_label = QLabel(f"Ventas hoy: {resumen['total_ventas']}")
-        ventas_label.setStyleSheet("font-size: 15 px; font-weight: bold; color: #2c3e50;")
+        ventas_label.setStyleSheet("font-size: 16 px; font-weight: bold; color: #2c3e50;")
         info_layout.addWidget(ventas_label)
 
         # Total del día
         total_label = QLabel(f"💰 Total: {formatear_precio(resumen['monto_total'])}")
-        total_label.setStyleSheet("font-size: 15px; font-weight: bold; color: #27ae60;")
+        total_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #27ae60;")
         info_layout.addWidget(total_label)
         
         return info_frame
@@ -411,8 +337,8 @@ class VentasFrame(QWidget):
         
         # Convertir a kg si es producto por peso (viene en gramos del diálogo)
         if es_peso:
-            cantidad_kg = cantidad_input / 1000.0  # Convertir gramos a kg
-            cantidad_display = cantidad_input  # Para mostrar en gramos
+            cantidad_kg = cantidad_input  # Ya está en kilogramos
+            cantidad_display = cantidad_input  # Para mostrar en kilogramos
         else:
             cantidad_kg = cantidad_input  # Ya está en unidades
             cantidad_display = cantidad_input
@@ -433,10 +359,17 @@ class VentasFrame(QWidget):
                 item["cantidad"] += cantidad_kg  # Siempre almacenar en kg
                 item["base_total"] = item["cantidad"] * item["precio"]
                 item["total"] = item["base_total"]
+                # Aplicar promoción automática si existe
+                try:
+                    from modules.productos.service.promocion_service import PromocionService
+                    PromocionService().aplicar_descuento_a_item(item)
+                except Exception:
+                    # No detener la operación por errores en promociones
+                    pass
                 break
         else:
             # Agregar nuevo producto al carrito (cantidad siempre en kg)
-            self.carrito.append({
+            nuevo_item = {
                 "id": id_producto,
                 "nombre": nombre,
                 "cantidad": cantidad_kg,
@@ -445,7 +378,14 @@ class VentasFrame(QWidget):
                 "total": precio * cantidad_kg,
                 "descuento": None,
                 "es_peso": es_peso  # Guardar si es producto por peso
-            })
+            }
+            # Aplicar promoción automática si existe
+            try:
+                from modules.productos.service.promocion_service import PromocionService
+                PromocionService().aplicar_descuento_a_item(nuevo_item)
+            except Exception:
+                pass
+            self.carrito.append(nuevo_item)
 
         self.actualizarCarrito()
         
@@ -467,7 +407,7 @@ class VentasFrame(QWidget):
         
         # Mensaje
         if es_peso:
-            mensaje = QLabel(f"Ingrese el peso de '{nombre}' (en gramos):")
+            mensaje = QLabel(f"Ingrese el peso de '{nombre}' (en kilogramos):")
         else:
             mensaje = QLabel(f"Ingrese la cantidad de '{nombre}':")
         mensaje.setStyleSheet("font-size: 14px; margin-bottom: 10px;")
@@ -476,8 +416,8 @@ class VentasFrame(QWidget):
         # Stock disponible
         if es_peso:
             # Convertir stock de kg a gramos para mostrar
-            stock_gramos = stock_disponible * 1000
-            stock_label = QLabel(f"Stock disponible: {stock_gramos:.0f}g")
+            stock_kilogramos = stock_disponible * 1
+            stock_label = QLabel(f"Stock disponible: {stock_kilogramos:.3f} kg")
         else:
             stock_label = QLabel(f"Stock disponible: {stock_disponible:.0f} unidades")
         stock_label.setStyleSheet("font-size: 12px; color: #7f8c8d; margin-bottom: 5px;")
@@ -488,15 +428,15 @@ class VentasFrame(QWidget):
             # Para productos por peso: usar DoubleSpinBox - solo para los de gramos o kg
             from PyQt5.QtWidgets import QDoubleSpinBox
             spin_cantidad = QDoubleSpinBox()
-            spin_cantidad.setMinimum(100.0)  # Mínimo 100 gramos por pesaje
-            spin_cantidad.setMaximum(stock_disponible * 1000)  # Stock en gramos (o kilos? no sé)
-            spin_cantidad.setValue(100.0)
-            spin_cantidad.setSingleStep(50.0)  # Incrementos de 50g en 50g
-            spin_cantidad.setDecimals(2)
-            spin_cantidad.setSuffix(" g")
+            spin_cantidad.setMinimum(0.1)  # Mínimo 0.1 kg por pesaje
+            spin_cantidad.setMaximum(stock_disponible * 1)  # Stock en kilogramos
+            spin_cantidad.setValue(0.1)
+            spin_cantidad.setSingleStep(0.05)  # Incrementos de 50g en 50g
+            spin_cantidad.setDecimals(3)
+            spin_cantidad.setSuffix(" kg")
             
             # Mensaje de mínimo 
-            min_label = QLabel("Mínimo de venta: 100g - 0.1 kg")
+            min_label = QLabel("Mínimo de venta: 100g - 0.100 kg")
             min_label.setStyleSheet("font-size: 11px; color: #e74c3c; margin-bottom: 5px;")
             layout.addWidget(min_label)
         else:
@@ -529,7 +469,7 @@ class VentasFrame(QWidget):
         buttons.rejected.connect(dialog.reject)
         layout.addWidget(buttons)
         
-        # Mostrar diálogo y retornar valor (en gramos si es peso, en unidades si no)
+        # Mostrar diálogo y retornar valor (en kilogramos si es peso, en unidades si no)
         if dialog.exec_() == QDialog.Accepted:
             return spin_cantidad.value()
         return None
@@ -540,17 +480,48 @@ class VentasFrame(QWidget):
         # Resetear descuento_aplicado temporal antes de cálculo (se actualizará si existe)
         # NOTE: descuentos se aplican sobre item['total'] que debe representar el estado actual
         for row_idx, item in enumerate(self.carrito):
+            # Recalcular/promocionar item antes de mostrar (asegura datos actualizados)
+            try:
+                from modules.productos.service.promocion_service import PromocionService
+                from modules.productos.models.promocion_model import PromocionModel
+                PromocionService().aplicar_descuento_a_item(item)
+            except Exception:
+                # Silenciar errores en promociones para no romper la vista
+                pass
+
             self.tabla_carrito.setItem(row_idx, 0, QTableWidgetItem(item["nombre"]))
             
-            # Mostrar cantidad en gramos si es producto por peso, sino en unidades
+            # Mostrar cantidad en kilogramos o unidades según corresponda
             if item.get("es_peso", False):
-                cantidad_display = f"{item['cantidad'] * 1000:.0f}g"  # Convertir kg a gramos
+                cantidad_display = f"{item['cantidad']:.3f} kg"  # Mostrar en kilogramos con 3 decimales
             else:
                 cantidad_display = str(int(item["cantidad"]))
             self.tabla_carrito.setItem(row_idx, 1, QTableWidgetItem(cantidad_display))
             
             self.tabla_carrito.setItem(row_idx, 2, QTableWidgetItem(formatear_precio(item["precio"])))
             self.tabla_carrito.setItem(row_idx, 3, QTableWidgetItem(formatear_precio(item.get("total", 0))))
+
+            # Promoción: mostrar badge si existe
+            try:
+                from modules.productos.models.promocion_model import PromocionModel
+                id_prom = item.get('id_promocion')
+                if id_prom:
+                    prom = PromocionModel().obtener_por_id(id_prom)
+                    if prom:
+                        prom_name = prom.get('nombre', '')
+                        prom_pct = prom.get('descuento', item.get('descuento_pct_aplicado', 0))
+                        promo_label = QLabel(f"{prom_name} ({prom_pct:.0f}% )")
+                        promo_label.setStyleSheet("background-color:#27ae60; color:white; padding:4px 8px; border-radius:8px; font-weight:bold;")
+                        promo_label.setToolTip(f"Promoción: {prom_name}\nDescuento: {prom_pct:.0f}%")
+                    else:
+                        promo_label = QLabel("")
+                else:
+                    promo_label = QLabel("")
+            except Exception:
+                promo_label = QLabel("")
+
+            promo_label.setAlignment(Qt.AlignCenter)
+            self.tabla_carrito.setCellWidget(row_idx, 4, promo_label)
 
             # Acciones: solo botón remover
             action_widget = QWidget()
@@ -575,7 +546,7 @@ class VentasFrame(QWidget):
             btn_remover.clicked.connect(lambda checked, idx=row_idx: self.removerCarrito(idx))
             action_layout.addWidget(btn_remover)
             action_widget.setLayout(action_layout)
-            self.tabla_carrito.setCellWidget(row_idx, 4, action_widget)
+            self.tabla_carrito.setCellWidget(row_idx, 5, action_widget)
             self.total += float(item.get("total", 0))
 
         self.label_total.setText(f"Total: {formatear_precio(self.total)}")
@@ -590,31 +561,148 @@ class VentasFrame(QWidget):
     def limpiarCarrito(self):
         self.carrito.clear()
         self.actualizarCarrito()
+        # Limpiar también datos del cliente temporal
+        self.datos_cliente = None
         QMessageBox.information(self, "Carrito limpio", "Todos los productos han sido removidos del carrito")
     
+# → Procesar venta con generación automática de comprobante
     def procesarVenta(self):
         if not self.carrito:
             QMessageBox.warning(self, "Carrito vacío", "Agrega productos al carrito antes de procesar la venta")
             return
         
-        # Confirmar venta
-        reply = QMessageBox.question(self, "Procesar Venta", 
-                                   f"¿Procesar venta por {formatear_precio(self.total)}?",
-                                   QMessageBox.Yes | QMessageBox.No)
+        # Validar total mínimo de venta (S/0.50)
+        if self.total < 0.50:
+            QMessageBox.warning(
+                self, 
+                "Total Insuficiente", 
+                f"El total de la venta ({formatear_precio(self.total)}) debe ser mayor a S/0.50"
+            )
+            return
         
-        if reply == QMessageBox.Yes:
-            # Procesar la venta usando el SERVICE (lógica de negocio)
-            success, venta_id, mensaje = self.venta_service.procesar_venta_completa(
+    # Mostrar diálogo flotante para capturar datos del cliente y método de pago
+        dialogo = DialogoComprobante(self, self.comprobante_service)
+        
+        if dialogo.exec_() == QDialog.Accepted:
+            # Obtener datos del diálogo
+            datos = dialogo.obtenerDatos()
+            datos_cliente = datos.get('datos_cliente')
+            metodo_pago = datos.get('metodo_pago', 'efectivo')
+            datos_pago_tarjeta = datos.get('datos_pago_tarjeta')
+            
+            # Preparar mensaje de confirmación
+            msg_metodo = metodo_pago.upper()
+            if metodo_pago == 'tarjeta' and datos_pago_tarjeta:
+                msg_metodo = f"TARJETA (ID: {datos_pago_tarjeta.get('charge_id', 'N/A')[:20]}...)"
+            
+            # Solo pedir confirmación si el pago es en EFECTIVO
+            if metodo_pago == 'efectivo':
+                confirmacion = QMessageBox.question(
+                    self,
+                    "Confirmar Venta",
+                    f"¿Desea procesar la venta por {msg_metodo} por un total de {formatear_precio(self.total)}?",
+                    QMessageBox.Yes | QMessageBox.No
+                )
+                if confirmacion != QMessageBox.Yes:
+                    return  # Usuario canceló la venta
+            
+            # Procesar la venta usando el SERVICE con el método de pago
+            success, venta_id, mensaje, alertas = self.venta_service.procesar_venta_completa(
                 carrito=self.carrito,
                 empleado_id=1,  # Por ahora usamos empleado 1 por defecto
-                metodo_pago="efectivo"
+                metodo_pago=metodo_pago,
+                datos_pago_tarjeta=datos_pago_tarjeta
             )
-            
+                
             if success:
-                QMessageBox.information(self, "Venta Exitosa", 
-                                       f"✅ {mensaje}\nID: {venta_id}")
+                # Emitir comprobante automáticamente
+                self.emitirComprobanteIntegrado(venta_id, datos_cliente, metodo_pago)
+                    
+                # Mostrar alertas si existen
+                if alertas:
+                    alertas_msg = "\n".join(alertas)
+                    QMessageBox.warning(
+                        self,
+                        "Alertas de Stock",
+                        f"Venta procesada exitosamente.\n\n{alertas_msg}"
+                    )
+                    
+                # Limpiar y recargar
                 self.limpiarCarrito()
                 self.cargarProductos()  # Recargar para actualizar stock
-
             else:
                 QMessageBox.critical(self, "Error en Venta", f"❌ {mensaje}")
+
+# → Emitir comprobante (boleta o factura) para una venta existente
+    def emitirComprobante(self, venta_id):
+        try:
+            tipo = 'boleta' if self.datos_cliente.get('tipo') == 'boleta' else 'factura'
+            resultado = self.comprobante_service.emitir_comprobante(venta_id, tipo, self.datos_cliente)
+
+            if resultado.get('success'):
+                codigo = resultado.get('codigo', '')
+                QMessageBox.information(
+                    self,
+                    "Comprobante Emitido",
+                    f"✅ {tipo.upper()} emitida correctamente\n\nCódigo: {codigo}"
+                )
+            else:
+                QMessageBox.warning(self, "Error", f"No se pudo emitir el comprobante:\n{resultado.get('error', 'Error desconocido')}")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Error al emitir comprobante:\n{str(e)}")
+    
+# → Emite comprobante automáticamente con datos del diálogo integrado
+    def emitirComprobanteIntegrado(self, venta_id, datos_cliente, metodo_pago):
+        try:
+            # Si datos_cliente es None, usar cliente genérico
+            if not datos_cliente:
+                datos_cliente = {
+                    'tipo': 'boleta',
+                    'num_documento': '00000000',
+                    'nombre_completo': 'Cliente Genérico'
+                }
+            tipo = datos_cliente.get('tipo', 'boleta')
+            resultado = self.comprobante_service.emitir_comprobante(
+                venta_id, 
+                tipo, 
+                datos_cliente, 
+                metodo_pago
+            )
+            # → Manejar resultado
+            if resultado.get('success'):
+                tipo_comp = "Boleta" if tipo == 'boleta' else "Factura"
+                serie = resultado.get('serie', '')
+                numero = resultado.get('numero', '')
+                codigo = resultado.get('codigo', '')
+                pdf_path = resultado.get('pdf_path', '')
+                xml_path = resultado.get('xml_path', '')
+                
+                # Construir mensaje informativo
+                mensaje = f"{tipo_comp} emitida correctamente\n\n"
+                mensaje += f"Serie-Número: {serie}-{numero}\n"
+                mensaje += f"Código: {codigo}\n"
+                mensaje += f"Método de pago: {metodo_pago.upper()}\n\n"
+                
+                if pdf_path:
+                    mensaje += f"📄 PDF: {pdf_path}\n"
+                if xml_path:
+                    mensaje += f"📝 XML: {xml_path}\n"
+                
+                QMessageBox.information(
+                    self,
+                    "Venta y Comprobante Exitoso",
+                    mensaje
+                )
+            else:
+                error = resultado.get('error', 'Error desconocido')
+                QMessageBox.warning(
+                    self, 
+                    "Venta exitosa, error en comprobante", 
+                    f"La venta se procesó correctamente (ID: {venta_id})\n\nX - Pero hubo un error al generar el comprobante:\n{error}"
+                )
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                "Error en comprobante",
+                f"La venta se procesó correctamente (ID: {venta_id})\n\nX - Error al emitir comprobante:\n{str(e)}"
+            )

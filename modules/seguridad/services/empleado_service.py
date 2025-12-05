@@ -213,7 +213,7 @@ class EmpleadoService:
                 FROM empleado e
                 JOIN rol r ON e.id_rol = r.id_rol
                 LEFT JOIN usuario u ON e.id_empleado = u.id_empleado
-                ORDER BY e.estado_empleado DESC, e.nombre_empleado, e.apellido_empleado
+                ORDER BY e.estado_empleado DESC, e.id_empleado
             ''', conexion)
             conexion.close()
             return empleados.to_dict('records')

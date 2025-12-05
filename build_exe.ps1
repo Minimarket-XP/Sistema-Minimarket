@@ -1,13 +1,16 @@
-# Script PowerShell para crear ejecutable del Sistema Minimarket
+# Script PowerShell para crear ejecutable del Sistema Minimarket Don Manuelito
+# Versión 2.1.0 - MVP | Actualizado: 2025-11-21
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "   SISTEMA MINIMARKET - BUILD EJECUTABLE" -ForegroundColor Cyan  
+Write-Host " SISTEMA MINIMARKET DON MANUELITO v2.1.0" -ForegroundColor Cyan
+Write-Host "       BUILD EJECUTABLE - MVP" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host
 
-# Variables
+# Variables de configuración
 $pythonPath = "python"
 $specFile = "SistemaMinimarket.spec"
 $exeName = "SistemaMinimarket"
+$versionApp = "2.1.0-MVP"
 
 Write-Host "[1/5] Limpiando archivos anteriores..." -ForegroundColor Yellow
 if (Test-Path "dist") { Remove-Item "dist" -Recurse -Force }
@@ -21,6 +24,7 @@ try {
     Write-Host "`nVerificando módulos necesarios..." -ForegroundColor Yellow
     & $pythonPath -c "import PyQt5; print('  ✓ PyQt5 instalado')"
     & $pythonPath -c "import pandas; print('  ✓ Pandas instalado')"
+    & $pythonPath -c "import numpy; print('  ✓ NumPy instalado')"
     & $pythonPath -c "import matplotlib; print('  ✓ Matplotlib instalado')"
     & $pythonPath -c "import reportlab; print('  ✓ ReportLab instalado')"
     & $pythonPath -c "import openpyxl; print('  ✓ OpenPyXL instalado')"
@@ -31,6 +35,7 @@ try {
     Write-Host "❌ Error verificando dependencias: $_" -ForegroundColor Red
     Write-Host "`nPara instalar dependencias faltantes, ejecuta:" -ForegroundColor Yellow
     Write-Host "  pip install -r requirements.txt" -ForegroundColor Cyan
+    Write-Host "  pip install --upgrade pyinstaller" -ForegroundColor Cyan
     pause
     exit
 }
@@ -55,10 +60,11 @@ if (-not $allFilesExist) {
 }
 
 Write-Host "`n[4/5] Construyendo ejecutable..." -ForegroundColor Yellow
-Write-Host "⏳ Este proceso puede tomar 3-5 minutos, por favor espera..." -ForegroundColor Cyan
-Write-Host "   • Compilando módulos Python" -ForegroundColor Gray
-Write-Host "   • Empaquetando dependencias" -ForegroundColor Gray
-Write-Host "   • Incluyendo base de datos e imágenes" -ForegroundColor Gray
+Write-Host "⏳ Este proceso puede tomar 3-7 minutos, por favor espera..." -ForegroundColor Cyan
+Write-Host "   • Compilando módulos Python (productos, ventas, devoluciones)" -ForegroundColor Gray
+Write-Host "   • Empaquetando dependencias (PyQt5, pandas, matplotlib)" -ForegroundColor Gray
+Write-Host "   • Incluyendo base de datos SQLite e imágenes" -ForegroundColor Gray
+Write-Host "   • Optimizando y comprimiendo con UPX" -ForegroundColor Gray
 Write-Host "   • Creando ejecutable único (.exe)" -ForegroundColor Gray
 Write-Host
 
@@ -77,22 +83,29 @@ try {
         Write-Host "`n📦 INFORMACIÓN DEL EJECUTABLE:" -ForegroundColor Cyan
         Write-Host "   📂 Ubicación: dist\$exeName.exe" -ForegroundColor White
         Write-Host "   📏 Tamaño: $sizeInMB MB" -ForegroundColor White
+        Write-Host "   🏷️  Versión: $versionApp" -ForegroundColor White
         Write-Host "   📅 Fecha creación: $($fileInfo.CreationTime)" -ForegroundColor White
 
-        Write-Host "`n🎯 PARA DISTRIBUIR:" -ForegroundColor Cyan
+        Write-Host "`n🎯 CARACTERÍSTICAS INCLUIDAS:" -ForegroundColor Cyan
+        Write-Host "   ✅ Gestión de Inventario (productos, categorías, stock)" -ForegroundColor White
+        Write-Host "   ✅ Sistema de Ventas (POS con descuentos y promociones)" -ForegroundColor White
+        Write-Host "   ✅ Devoluciones (validación por peso/unidad)" -ForegroundColor White
+        Write-Host "   ✅ Reportes y Gráficos (ventas, productos, Excel/PDF)" -ForegroundColor White
+        Write-Host "   ✅ Control de Usuarios y Seguridad" -ForegroundColor White
+        Write-Host "   ✅ Base de datos SQLite integrada" -ForegroundColor White
+
+        Write-Host "`n📤 PARA DISTRIBUIR:" -ForegroundColor Cyan
         Write-Host "   1. Comparte SOLO el archivo: dist\$exeName.exe" -ForegroundColor White
         Write-Host "   2. NO necesita Python instalado en la PC destino" -ForegroundColor White
         Write-Host "   3. Funciona en Windows 10/11 (64-bit)" -ForegroundColor White
         Write-Host "   4. Incluye base de datos e imágenes integradas" -ForegroundColor White
+        Write-Host "   5. Todo el sistema en un solo archivo ejecutable" -ForegroundColor White
 
         Write-Host "`n⚠️  IMPORTANTE:" -ForegroundColor Yellow
-        Write-Host "   • Primera ejecución puede tardar unos segundos" -ForegroundColor White
+        Write-Host "   • Primera ejecución puede tardar 5-10 segundos" -ForegroundColor White
         Write-Host "   • Algunos antivirus pueden requerir autorización" -ForegroundColor White
-        Write-Host "   • Si Windows SmartScreen aparece, clic en 'Más información' > 'Ejecutar de todas formas'" -ForegroundColor White
-        Write-Host "`n⚠️  IMPORTANTE:" -ForegroundColor Yellow
-        Write-Host "   • Primera ejecución puede tardar unos segundos" -ForegroundColor White
-        Write-Host "   • Algunos antivirus pueden requerir autorización" -ForegroundColor White
-        Write-Host "   • Si Windows SmartScreen aparece, clic en 'Más información' > 'Ejecutar de todas formas'" -ForegroundColor White
+        Write-Host "   • Si Windows SmartScreen aparece: 'Más información' > 'Ejecutar de todas formas'" -ForegroundColor White
+        Write-Host "   • Usuario de prueba: admin / Contraseña: admin123" -ForegroundColor White
         Write-Host
         Write-Host "========================================" -ForegroundColor Green
         

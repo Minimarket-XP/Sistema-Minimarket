@@ -22,8 +22,56 @@ class Database:
         conn.text_factory = lambda x: str(x, 'utf-8', 'replace') if isinstance(x, bytes) else x
         return conn
 
-    def init_database(self): # Inicializa la base de datos y crea tablas si no existen
+    # Helper de ejecución centralizada para evitar manejo manual de commit/close
+    def execute(self, sql, params=(), commit=False):
         conn = None
+        try:
+            conn = self.get_connection()
+            cur = conn.cursor()
+            cur.execute(sql, params)
+            if commit:
+                conn.commit()
+            return cur
+        finally:
+            if conn:
+                conn.close()
+
+    def fetchall(self, sql, params=()):
+        conn = None
+        try:
+            conn = self.get_connection()
+            cur = conn.cursor()
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+            return rows
+        finally:
+            if conn:
+                conn.close()
+
+    def fetchone(self, sql, params=()):
+        conn = None
+        try:
+            conn = self.get_connection()
+            cur = conn.cursor()
+            cur.execute(sql, params)
+            return cur.fetchone()
+        finally:
+            if conn:
+                conn.close()
+
+    def query_df(self, sql, params=None):
+        # Usar pandas para consultas tabulares cuando sea conveniente
+        try:
+            import pandas as pd
+            conn = self.get_connection()
+            df = pd.read_sql_query(sql, conn, params=params)
+            conn.close()
+            return df
+        except Exception:
+            # Si falla, devolver None para que el llamador lo maneje
+            return None
+
+    def init_database(self): # Inicializa la base de datos y crea tablas si no existen
         try:
             # conn = conexión
             # cursor para crear tablas
@@ -82,16 +130,16 @@ class Database:
 
             # Tabla de promocion
             cursor.execute('''
-                     CREATE TABLE IF NOT EXISTS promocion (
-                         id_promocion INTEGER PRIMARY KEY AUTOINCREMENT,
-                         nombre_promocion TEXT NOT NULL,
-                         descripcion_promocion TEXT,
-                         descuento REAL NOT NULL CHECK (descuento >= 0 AND descuento <= 100),
-                         fecha_inicio DATETIME NOT NULL,
-                         fecha_fin DATETIME NOT NULL,
-                         estado_promocion TEXT CHECK(estado_promocion IN ('activa', 'inactiva', 'expirada')) NOT NULL DEFAULT 'inactiva'
-                     )
-                 ''')
+                CREATE TABLE IF NOT EXISTS promocion (
+                    id_promocion INTEGER PRIMARY KEY AUTOINCREMENT,
+                    nombre_promocion TEXT NOT NULL,
+                    descripcion_promocion TEXT,
+                    descuento REAL NOT NULL CHECK (descuento >= 0 AND descuento <= 100),
+                    fecha_inicio DATETIME NOT NULL,
+                    fecha_fin DATETIME NOT NULL,
+                    estado_promocion TEXT CHECK(estado_promocion IN ('activa', 'inactiva', 'expirada')) NOT NULL DEFAULT 'inactiva'
+                )
+            ''')
 
             # Tabla de promocion_producto
             cursor.execute('''
@@ -102,6 +150,17 @@ class Database:
                     PRIMARY KEY (id_promocion, id_producto),
                     FOREIGN KEY (id_promocion) REFERENCES promocion (id_promocion),
                     FOREIGN KEY (id_producto) REFERENCES productos (id_producto)
+                )
+            ''')
+
+            # Tabla de promocion_categoria (asignar promociones a categorías)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS promocion_categoria (
+                    id_promocion INTEGER NOT NULL,
+                    id_categoria INTEGER NOT NULL,
+                    PRIMARY KEY (id_promocion, id_categoria),
+                    FOREIGN KEY (id_promocion) REFERENCES promocion (id_promocion),
+                    FOREIGN KEY (id_categoria) REFERENCES categoria_productos (id_categoria_productos)
                 )
             ''')
 
@@ -164,11 +223,22 @@ class Database:
                     descuento_aplicado REAL DEFAULT 0,
                     subtotal_detalle REAL NOT NULL,
                     id_producto TEXT NOT NULL,
-                    id_venta INTEGER NOT NULL,
+                    id_venta TEXT NOT NULL,
+                    id_promocion INTEGER,
                     FOREIGN KEY (id_producto) REFERENCES productos (id_producto),
-                    FOREIGN KEY (id_venta) REFERENCES ventas (id_venta)
+                    FOREIGN KEY (id_venta) REFERENCES ventas (id_venta),
+                    FOREIGN KEY (id_promocion) REFERENCES promocion (id_promocion)
                 )
             ''')
+            # Si la base ya existía sin la columna `id_promocion`, añadirla ahora
+            try:
+                cursor.execute("PRAGMA table_info(detalle_venta)")
+                cols = [r[1] for r in cursor.fetchall()]
+                if 'id_promocion' not in cols:
+                    cursor.execute('ALTER TABLE detalle_venta ADD COLUMN id_promocion INTEGER')
+            except Exception:
+                # No interrumpir la inicialización por este paso
+                pass
 
             # Tabla de comprobantes
             cursor.execute('''
@@ -187,7 +257,7 @@ class Database:
                     xml_path TEXT,
                     pdf_path TEXT,
                     estado_sunat TEXT,
-                    id_venta INTEGER NOT NULL,
+                    id_venta TEXT NOT NULL,
                     FOREIGN KEY (id_venta) REFERENCES ventas (id_venta),
                     CHECK (
                         (tipo_comprobante = 'factura' AND ruc_emisor IS NOT NULL) OR
@@ -205,7 +275,7 @@ class Database:
                     monto_devolucion REAL NOT NULL,
                     tipo_devolucion TEXT CHECK(tipo_devolucion IN ('total', 'parcial')) NOT NULL,
                     estado_devolucion TEXT CHECK(estado_devolucion IN ('pendiente', 'completada', 'en proceso')) DEFAULT 'pendiente',
-                    id_venta INTEGER NOT NULL,
+                    id_venta TEXT NOT NULL,
                     id_detalle_venta INTEGER NOT NULL,
                     FOREIGN KEY (id_venta) REFERENCES ventas (id_venta),
                     FOREIGN KEY (id_detalle_venta) REFERENCES detalle_venta (id_detalle_venta)
@@ -234,7 +304,7 @@ class Database:
                     monto_total_nota REAL NOT NULL,
                     motivo TEXT,
                     id_comprobante INTEGER NOT NULL,
-                    id_venta INTEGER NOT NULL,
+                    id_venta TEXT NOT NULL,
                     FOREIGN KEY (id_venta) REFERENCES ventas (id_venta),
                     FOREIGN KEY (id_comprobante) REFERENCES comprobante (id_comprobante)
                 )
@@ -278,6 +348,19 @@ class Database:
                 )
             ''')
 
+            # Tabla de caché de documentos (DNI/RUC)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS cache_documentos (
+                    id_cache INTEGER PRIMARY KEY AUTOINCREMENT,
+                    tipo_documento TEXT CHECK(tipo_documento IN ('DNI', 'RUC')) NOT NULL,
+                    numero_documento TEXT NOT NULL,
+                    datos_json TEXT NOT NULL,
+                    fecha_consulta DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    fecha_expiracion DATETIME,
+                    UNIQUE(tipo_documento, numero_documento)
+                )
+            ''')
+
             # Insertar datos iniciales si no existen
             self.datos_iniciales(cursor)
             # Crear triggers de lógica de negocio
@@ -287,8 +370,7 @@ class Database:
         except Exception as e:
             print(f"Error al crear la base de datos: {e}")
         finally:
-            if conn:
-                conn.close() # Cerrar conexión
+            conn.close() # Cerrar conexión
 
     def datos_iniciales(self, cursor): # → Insertar datos iniciales del minimarket
         try:
@@ -378,7 +460,7 @@ class Database:
                     ''', (nombre, descripcion))
 
             # Insertar roles adicionales
-            roles_adicionales = ['supervisor', 'cajero']
+            roles_adicionales = ['cajero', 'vendedor', 'almacenista', 'supervisor']
 
             for nombre in roles_adicionales:
                 cursor.execute(
@@ -483,9 +565,9 @@ class Database:
 
         return last_id
 
-    def verificar_credenciales(self, username, password_hash):
-        query = "SELECT password_hash FROM usuario WHERE username = ? AND estado_usuario = 'activo'"
-        result = self.execute_query(query, (username,))
+    def verificar_credenciales(self, usuario, contraseña):
+        query = "SELECT contraseña FROM empleados WHERE usuario = ? AND activo = 1"
+        result = self.execute_query(query, (usuario,))
 
         if not result:
             return False
@@ -494,7 +576,7 @@ class Database:
 
         # Verificar contraseña con bcrypt
         try:
-            return bcrypt.checkpw(password_hash.encode('utf-8'), hashed_password)
+            return bcrypt.checkpw(contraseña.encode('utf-8'), hashed_password)
         except Exception as e:
             print(f"Error verificando contraseña: {e}")
             return False
@@ -554,13 +636,13 @@ class Database:
             CREATE TRIGGER calcular_subtotal_detalle
             BEFORE INSERT ON detalle_venta
             FOR EACH ROW
-            WHEN NEW.subtotal_detalle = 0 OR NEW.subtotal_detalle IS NULL
             BEGIN
-                SELECT RAISE(ABORT, 'Error: Debe calcular el subtotal antes de insertar');
+                SELECT 
+                    (NEW.cantidad_detalle * NEW.precio_unitario_detalle) - COALESCE(NEW.descuento_aplicado, 0);
             END
         ''')
 
-    # TRIGGERS DE STOCK
+    # TRIGGERS DE STOCK - ACTUALIZACIÓN
 
         # TRIGGER 5: Actualizar stock después de venta
         cursor.execute('DROP TRIGGER IF EXISTS actualizar_stock_despues_venta')
@@ -734,6 +816,19 @@ class Database:
 
     # TRIGGERS DE PRODUCTOS
 
+        # TRIGGER 16: Actualizar fecha de modificación de productos
+        cursor.execute('DROP TRIGGER IF EXISTS actualizar_fecha_producto')
+        cursor.execute('''
+            CREATE TRIGGER actualizar_fecha_producto
+            BEFORE UPDATE ON productos
+            FOR EACH ROW
+            BEGIN
+                UPDATE productos
+                SET fecha_actualizacion = CURRENT_TIMESTAMP
+                WHERE id_producto = NEW.id_producto;
+            END
+        ''')
+
         # TRIGGER 17: Validar descuento no mayor al 100%
         cursor.execute('DROP TRIGGER IF EXISTS validar_descuento_promocion')
         cursor.execute('''
@@ -748,7 +843,33 @@ class Database:
             END
         ''')
 
-        # TRIGGER 18: Restaurar stock al completar devolución
+        # TRIGGER 17b: Validar descuento al actualizar
+        cursor.execute('DROP TRIGGER IF EXISTS validar_descuento_promocion_update')
+        cursor.execute('''
+            CREATE TRIGGER validar_descuento_promocion_update
+            BEFORE UPDATE ON promocion
+            FOR EACH ROW
+            BEGIN
+                SELECT CASE
+                    WHEN NEW.descuento < 0 OR NEW.descuento > 100
+                    THEN RAISE(ABORT, 'El descuento debe estar entre 0 y 100')
+                END;
+            END
+        ''')
+
+        # TRIGGER 18: Eliminar asignaciones relacionadas cuando se elimina una promoción
+        cursor.execute('DROP TRIGGER IF EXISTS eliminar_asignaciones_promocion')
+        cursor.execute('''
+            CREATE TRIGGER eliminar_asignaciones_promocion
+            BEFORE DELETE ON promocion
+            FOR EACH ROW
+            BEGIN
+                DELETE FROM promocion_producto WHERE id_promocion = OLD.id_promocion;
+                DELETE FROM promocion_categoria WHERE id_promocion = OLD.id_promocion;
+            END
+        ''')
+
+        # TRIGGER 19: Restaurar stock al completar devolución
         cursor.execute('DROP TRIGGER IF EXISTS restaurar_stock_devolucion')
         cursor.execute('''
             CREATE TRIGGER restaurar_stock_devolucion
@@ -770,9 +891,11 @@ class Database:
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_ventas_fecha ON ventas(fecha_venta)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_usuario_username ON usuario(username)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_comprobante_numero ON comprobante(numero_comprobante)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_comprobante_venta ON comprobante(id_venta)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_promocion_estado ON promocion(estado_promocion)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_detalle_venta_id_producto ON detalle_venta(id_producto)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_detalle_venta_id_venta ON detalle_venta(id_venta)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_cache_documentos_tipo ON cache_documentos(tipo_documento, numero_documento)')
 
 # Instancia global de la base de datos
 db = Database()

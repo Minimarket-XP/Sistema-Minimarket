@@ -13,7 +13,6 @@ class Dashboard(QMainWindow):
         self.setWindowTitle(f"{APP_NAME} - {usuario}")
         self.setWindowIcon(QIcon(APP_ICON))
         self.showMaximized()
-    
         self.interfaz_principal()
     
     def obtener_rol_usuario(self): # → Obtener el rol de usuario activo
@@ -42,7 +41,7 @@ class Dashboard(QMainWindow):
         main_layout.setSpacing(0)
         
         # Header
-        header = self.crear_header()
+        header = self.create_header()
         main_layout.addWidget(header)
         
         # Contenido
@@ -64,7 +63,7 @@ class Dashboard(QMainWindow):
         
         self.bienvenida_sistema()
     
-    def crear_header(self): # → Cabecero
+    def create_header(self): # → Cabecera
         header = QFrame()
         header.setStyleSheet(f"background-color: {THEME_COLOR}; color: white;")
         header.setFixedHeight(102)
@@ -77,7 +76,7 @@ class Dashboard(QMainWindow):
         
         # Ícono de la aplicación
         icono_label = QLabel()
-        pixmap = QIcon(APP_ICON).pixmap(54, 54)  # Tamaño del ícono
+        pixmap = QIcon(APP_ICON_BLANCO).pixmap(54, 54)  # Tamaño del ícono
         icono_label.setPixmap(pixmap)
         titulo_layout.addWidget(icono_label)
         
@@ -93,7 +92,7 @@ class Dashboard(QMainWindow):
         layout.addStretch()
         
         # Usuario
-        usuario = QLabel(f"👤 {self.usuario}")
+        usuario = QLabel(f"user: {self.usuario}")
         usuario.setStyleSheet("color: white; font-family: Roboto; font-size: 20px;")
         layout.addWidget(usuario)
 
@@ -101,11 +100,11 @@ class Dashboard(QMainWindow):
     
     def menu_lateral(self):
         menu = QFrame()
-        menu.setStyleSheet("background-color: #b9c2c4;")
+        menu.setStyleSheet("background-color: #3a6b8e;")
         menu.setFixedWidth(230)
         
         layout = QVBoxLayout(menu)
-        layout.setContentsMargins(20, 20, 10, 10) # →, ↓, ←, ↑
+        layout.setContentsMargins(15, 15, 15, 15) # →, ↓, ←, ↑
         
         # Botones principales
         botones = [
@@ -126,9 +125,9 @@ class Dashboard(QMainWindow):
             btn = QPushButton(texto)
             btn.setStyleSheet(f"""
                 QPushButton {{
-                    background-color: #b9c2c4;
-                    color: {NIGHT_COLOR};
-                    border: none;
+                    background-color: #3a6b8e;
+                    color: {WHITE_COLOR};
+                    border: 2px solid {WHITE_COLOR};
                     padding: 12px;
                     text-align: left;
                     font-size: 16px;
@@ -136,7 +135,11 @@ class Dashboard(QMainWindow):
                     font-weight: bold;
                 }}
                 QPushButton:hover {{
-                    background-color: #9ba5a7;
+                    background-color: #7d7d7d;
+                }}
+                QPushButton:focus {{
+                    outline: none;
+                    border: 2px solid {WHITE_COLOR};
                 }}
             """)
             btn.setCursor(Qt.PointingHandCursor)
@@ -154,6 +157,7 @@ class Dashboard(QMainWindow):
                 border: 2 px solid;
                 padding: 14px;
                 font-weight: bold;
+                font-size: 16px;
             }}
             QPushButton:hover {{
                 background-color: #c0392b;
@@ -230,22 +234,45 @@ class Dashboard(QMainWindow):
         except Exception as e:
             self.mostrar_error("Empleados", f"Error al cargar módulo: {str(e)}")
     
-    def mostrar_promociones(self): # → Adriel + Choncen
+    def mostrar_promociones(self):
         self.limpiar_contenido()
-        self.mostrar_error("Compras", "Próximamente en Sprint 2")
+        try:
+            from modules.productos.view.promociones_view import PromocionesFrame
+            frame = PromocionesFrame(self)
+            self.main_content.addWidget(frame)
+            self.main_content.setCurrentWidget(frame)
+        except Exception as e:
+            self.mostrar_error("Promociones", f"Error al cargar módulo: {e}")
 
-    def mostrar_alertas(self): # → Arif + Hugo
+    def mostrar_alertas(self): 
+        try:
+            from modules.productos.view.alertas_view import AlertasStockView
+            alertas = AlertasStockView(self)
+            self.main_content.addWidget(alertas)
+            self.main_content.setCurrentWidget(alertas)
+        except Exception as e:
+            self.mostrar_error("Alertas", f"Error al cargar módulo: {str(e)}")
+            
+    def mostrar_devoluciones(self):
         self.limpiar_contenido()
-        self.mostrar_error("Alertas", "Próximamente en Sprint 2")
+        try:
+            from modules.ventas.view.devoluciones_view import DevolucionesFrame
+            devoluciones = DevolucionesFrame(self)
+            self.main_content.addWidget(devoluciones)
+            self.main_content.setCurrentWidget(devoluciones)
+        except Exception as e:
+            self.mostrar_error("Devoluciones", f"Error al cargar módulo: {str(e)}")
+    
+    def mostrar_configuracion(self):
+        self.limpiar_contenido()
+        try:
+            from modules.sistema.configuracion_view import ConfiguracionWidget
+            configuracion = ConfiguracionWidget(self.usuario_rol)
+            self.main_content.addWidget(configuracion)
+            self.main_content.setCurrentWidget(configuracion)
+        except Exception as e:
+            self.mostrar_error("Configuración", f"Error al cargar módulo: {str(e)}")
 
-    def mostrar_devoluciones(self): # → Rodrigo + Gian
-        self.limpiar_contenido()
-        self.mostrar_error("Devoluciones", "Próximamente en Sprint 2")
-    
-    def mostrar_configuracion(self): # → Sorteo → Semana 14
-        self.limpiar_contenido()
-        self.mostrar_error("⚙️ Configuración", "Próximamente en Sprint 2")
-    
     def mostrar_error(self, titulo, mensaje):
         widget = QWidget()
         layout = QVBoxLayout(widget)
@@ -270,15 +297,15 @@ class Dashboard(QMainWindow):
         self.main_content.addWidget(widget)
         self.main_content.setCurrentWidget(widget)
     
+# → Cierra sesión y regresa al login
     def cerrar_sesion(self):
-        """Cierra sesión y vuelve al login"""
         self.hide()
         from modules.seguridad.view.login import LoginVentana
         self.login_window = LoginVentana()
         self.login_window.show()
-    
+
+# → Cerrar toda la aplicación al cerrar el dashboard    
     def closeEvent(self, event):
-        """Cerrar toda la aplicación cuando se cierra el dashboard con la X"""
         from PyQt5.QtWidgets import QApplication
         QApplication.quit()
         event.accept()
