@@ -17,9 +17,14 @@ Sistema de gestión completo para minimarket que incluye manejo de inventario, v
 **Sprint 2** - FUNCIONALIDADES COMPLEMENTARIAS
 - Gestión de clientes y empleados
 - Sistema de ventas con descuentos y devoluciones
-- Reportes de ventas en PDF y Excel
+- Sistema de pagos integrado (5 métodos: Efectivo, Tarjeta, Yape, Plin, Transferencia)
+- Integración con pasarela de pagos Culqi para tarjetas
+- Diálogos especializados para captura de datos de pago digital
+- Reportes de ventas en PDF y Excel con 4 secciones completas
+- Visualización de comprobantes emitidos con códigos de color
 - Notificaciones de stock bajo
 - Roles y permisos de usuario
+- Cache de documentos DNI/RUC para consultas
 
 **Sprint 3** - OPTIMIZACIÓN Y PERFORMANCE
 - Mejoras de rendimiento
@@ -30,14 +35,16 @@ Sistema de gestión completo para minimarket que incluye manejo de inventario, v
 
 - **Python 3.12**
 - **PyQt5** - Interfaz gráfica moderna y profesional
-- **SQLite** - Base de datos integrada con 17 triggers automáticos
+- **SQLite** - Base de datos integrada con 19 triggers automáticos
 - **bcrypt** - Encriptación segura de contraseñas
 - **pandas** - Manejo de datos y análisis
 - **matplotlib** - Gráficos y visualizaciones
 - **Pillow (PIL)** - Procesamiento de imágenes
 - **ReportLab** - Generación de reportes PDF
 - **OpenPyXL** - Exportación a Excel
-- **requests** - Consumo de APIs externas
+- **requests** - Consumo de APIs externas (RENIEC, SUNAT, Culqi)
+- **python-dotenv** - Gestión de variables de entorno
+- **culqi-python** - Integración con pasarela de pagos
 - **setuptools, wheel, PyInstaller** - Empaquetado y distribución
 
 ## Instalación
@@ -112,10 +119,15 @@ Sistema-Minimarket-wa/
 │   │   │   └── venta_model.py
 │   │   ├── service/
 │   │   │   ├── comprobante_service.py     # Facturación electrónica
+│   │   │   ├── culqi_service.py           # Integración pasarela Culqi
 │   │   │   ├── descuentos_service.py      # Lógica de descuentos
 │   │   │   ├── devolucion_service.py      # Lógica de devoluciones
 │   │   │   └── venta_service.py           # Lógica de ventas
 │   │   └── view/
+│   │       ├── dialogo_comprobante.py     # Diálogo emisión comprobantes
+│   │       ├── dialogo_pago_qr.py         # Diálogo pago QR (Yape/Plin)
+│   │       ├── dialogo_pago_tarjeta.py    # Diálogo pago con tarjeta
+│   │       ├── dialogo_pago_transferencia.py  # Diálogo transferencia bancaria
 │   │       ├── devoluciones_view.py       # Interfaz devoluciones
 │   │       └── venta_view.py              # Interfaz punto de venta
 │   ├── reportes/
@@ -161,13 +173,13 @@ El sistema implementa una arquitectura MVC modular de 4 capas:
 
 ### Base de Datos
 
-**17 Tablas Normalizadas:**
+**18 Tablas Normalizadas:**
 - Productos: `tipo_productos`, `categoria_productos`, `unidad_medida`, `productos`, `promocion`, `promocion_producto`
 - Seguridad: `rol`, `empleado`, `usuario`
 - Ventas: `ventas`, `detalle_venta`, `comprobante`, `devolucion`, `detalle_devolucion`, `nota_credito`
-- Sistema: `auditoria`, `backup_log`, `configuracion`
+- Sistema: `auditoria`, `backup_log`, `configuracion`, `cache_documentos`
 
-**17 Triggers Automáticos:**
+**19 Triggers Automáticos:**
 - Validación: cantidad, precio, stock, fechas, descuentos, usuarios
 - Cálculo: subtotal automático en detalles
 - Stock: actualización automática en ventas/devoluciones/modificaciones
@@ -238,9 +250,14 @@ El sistema está disponible como **ejecutable independiente** que no requiere Py
 - **Gestión de inventarios** con sistema de códigos automáticos
 - **Gestión de ventas** con facturación y comprobantes
 - **Punto de venta (POS)** completo con descuentos
+- **Sistema de pagos integrado** con 5 métodos (Efectivo, Tarjeta, Yape, Plin, Transferencia)
+- **Integración Culqi** para pagos con tarjeta en modo TEST
+- **Diálogos especializados** para captura de datos de pago digital
 - **Sistema de devoluciones** y notas de crédito
-- **Reportes automáticos** (PDF y Excel)
-- **Base de datos SQLite** con triggers automáticos
+- **Reportes automáticos** (PDF y Excel) con 4 secciones completas
+- **Visualización de comprobantes** con códigos de color por tipo y método de pago
+- **Base de datos SQLite** con 19 triggers automáticos
+- **Cache de documentos** DNI/RUC para optimización de consultas
 - **Interfaz PyQt5** profesional y moderna
 - **Sistema de auditoría** y backups integrado
 
@@ -253,7 +270,9 @@ El sistema está disponible como **ejecutable independiente** que no requiere Py
 - matplotlib (Gráficos)
 - ReportLab (PDFs)
 - PIL/Pillow (Imágenes)
-- requests (API comprobantes)
+- requests (APIs RENIEC, SUNAT, Culqi)
+- python-dotenv (Variables de entorno)
+- culqi-python (Pasarela de pagos)
 - setuptools, wheel, PyInstaller
 - Todas las librerías del sistema
 
