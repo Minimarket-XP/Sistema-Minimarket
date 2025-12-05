@@ -72,7 +72,6 @@ class Database:
             return None
 
     def init_database(self): # Inicializa la base de datos y crea tablas si no existen
-        conn = None
         try:
             # conn = conexión
             # cursor para crear tablas
@@ -131,16 +130,16 @@ class Database:
 
             # Tabla de promocion
             cursor.execute('''
-                     CREATE TABLE IF NOT EXISTS promocion (
-                         id_promocion INTEGER PRIMARY KEY AUTOINCREMENT,
-                         nombre_promocion TEXT NOT NULL,
-                         descripcion_promocion TEXT,
-                         descuento REAL NOT NULL CHECK (descuento >= 0 AND descuento <= 100),
-                         fecha_inicio DATETIME NOT NULL,
-                         fecha_fin DATETIME NOT NULL,
-                         estado_promocion TEXT CHECK(estado_promocion IN ('activa', 'inactiva', 'expirada')) NOT NULL DEFAULT 'inactiva'
-                     )
-                 ''')
+                CREATE TABLE IF NOT EXISTS promocion (
+                    id_promocion INTEGER PRIMARY KEY AUTOINCREMENT,
+                    nombre_promocion TEXT NOT NULL,
+                    descripcion_promocion TEXT,
+                    descuento REAL NOT NULL CHECK (descuento >= 0 AND descuento <= 100),
+                    fecha_inicio DATETIME NOT NULL,
+                    fecha_fin DATETIME NOT NULL,
+                    estado_promocion TEXT CHECK(estado_promocion IN ('activa', 'inactiva', 'expirada')) NOT NULL DEFAULT 'inactiva'
+                )
+            ''')
 
             # Tabla de promocion_producto
             cursor.execute('''
@@ -164,31 +163,7 @@ class Database:
                     FOREIGN KEY (id_categoria) REFERENCES categoria_productos (id_categoria_productos)
                 )
             ''')
-            # Vistas para centralizar consultas usadas por la UI
-            cursor.execute('''
-                CREATE VIEW IF NOT EXISTS view_promociones AS
-                SELECT id_promocion AS id_promocion,
-                       nombre_promocion AS nombre,
-                       descripcion_promocion AS descripcion,
-                       descuento AS descuento,
-                       fecha_inicio AS fecha_inicio,
-                       fecha_fin AS fecha_fin,
-                       estado_promocion AS estado
-                FROM promocion
-            ''')
 
-            cursor.execute('''
-                CREATE VIEW IF NOT EXISTS view_productos_autocomplete AS
-                SELECT id_producto, nombre_producto FROM productos
-            ''')
-            # Vista de promociones activas (filtradas por fechas y estado)
-            cursor.execute('''
-                CREATE VIEW IF NOT EXISTS view_promociones_activas AS
-                SELECT id_promocion, nombre_promocion AS nombre, descripcion_promocion AS descripcion,
-                       descuento, fecha_inicio, fecha_fin, estado_promocion AS estado
-                FROM promocion
-                WHERE estado_promocion = 'activa' AND datetime(fecha_inicio) <= datetime('now') AND datetime(fecha_fin) >= datetime('now')
-            ''')
             # Tabla de roles
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS rol (
@@ -248,10 +223,11 @@ class Database:
                     descuento_aplicado REAL DEFAULT 0,
                     subtotal_detalle REAL NOT NULL,
                     id_producto TEXT NOT NULL,
-                    id_venta INTEGER NOT NULL,
+                    id_venta TEXT NOT NULL,
                     id_promocion INTEGER,
                     FOREIGN KEY (id_producto) REFERENCES productos (id_producto),
-                    FOREIGN KEY (id_venta) REFERENCES ventas (id_venta)
+                    FOREIGN KEY (id_venta) REFERENCES ventas (id_venta),
+                    FOREIGN KEY (id_promocion) REFERENCES promocion (id_promocion)
                 )
             ''')
             # Si la base ya existía sin la columna `id_promocion`, añadirla ahora
@@ -281,7 +257,7 @@ class Database:
                     xml_path TEXT,
                     pdf_path TEXT,
                     estado_sunat TEXT,
-                    id_venta INTEGER NOT NULL,
+                    id_venta TEXT NOT NULL,
                     FOREIGN KEY (id_venta) REFERENCES ventas (id_venta),
                     CHECK (
                         (tipo_comprobante = 'factura' AND ruc_emisor IS NOT NULL) OR
@@ -299,7 +275,7 @@ class Database:
                     monto_devolucion REAL NOT NULL,
                     tipo_devolucion TEXT CHECK(tipo_devolucion IN ('total', 'parcial')) NOT NULL,
                     estado_devolucion TEXT CHECK(estado_devolucion IN ('pendiente', 'completada', 'en proceso')) DEFAULT 'pendiente',
-                    id_venta INTEGER NOT NULL,
+                    id_venta TEXT NOT NULL,
                     id_detalle_venta INTEGER NOT NULL,
                     FOREIGN KEY (id_venta) REFERENCES ventas (id_venta),
                     FOREIGN KEY (id_detalle_venta) REFERENCES detalle_venta (id_detalle_venta)
@@ -328,7 +304,7 @@ class Database:
                     monto_total_nota REAL NOT NULL,
                     motivo TEXT,
                     id_comprobante INTEGER NOT NULL,
-                    id_venta INTEGER NOT NULL,
+                    id_venta TEXT NOT NULL,
                     FOREIGN KEY (id_venta) REFERENCES ventas (id_venta),
                     FOREIGN KEY (id_comprobante) REFERENCES comprobante (id_comprobante)
                 )
@@ -372,22 +348,16 @@ class Database:
                 )
             ''')
 
-            # Tabla Cache de Documentos (DNI/RUC)
+            # Tabla de caché de documentos (DNI/RUC)
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS cache_documentos (
-                    numero_documento TEXT PRIMARY KEY,
+                    id_cache INTEGER PRIMARY KEY AUTOINCREMENT,
                     tipo_documento TEXT CHECK(tipo_documento IN ('DNI', 'RUC')) NOT NULL,
-                    nombres TEXT,
-                    apellido_paterno TEXT,
-                    apellido_materno TEXT,
-                    razon_social TEXT,
-                    direccion TEXT,
-                    estado TEXT,
-                    condicion TEXT,
-                    departamento TEXT,
-                    provincia TEXT,
-                    distrito TEXT,
-                    ultima_consulta DATETIME DEFAULT CURRENT_TIMESTAMP
+                    numero_documento TEXT NOT NULL,
+                    datos_json TEXT NOT NULL,
+                    fecha_consulta DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    fecha_expiracion DATETIME,
+                    UNIQUE(tipo_documento, numero_documento)
                 )
             ''')
 
@@ -400,8 +370,7 @@ class Database:
         except Exception as e:
             print(f"Error al crear la base de datos: {e}")
         finally:
-            if conn:
-                conn.close() # Cerrar conexión
+            conn.close() # Cerrar conexión
 
     def datos_iniciales(self, cursor): # → Insertar datos iniciales del minimarket
         try:
@@ -437,7 +406,6 @@ class Database:
                 INSERT INTO usuario (username, password_hash, estado_usuario, id_empleado)
                 VALUES ('admin', ?, 'activo', ?)
             ''', (hashed_password, admin_empleado_id))
-
 
             # Insertar categorías
             categorias_basicas = [
@@ -492,7 +460,7 @@ class Database:
                     ''', (nombre, descripcion))
 
             # Insertar roles adicionales
-            roles_adicionales = ['supervisor', 'cajero']
+            roles_adicionales = ['cajero', 'vendedor', 'almacenista', 'supervisor']
 
             for nombre in roles_adicionales:
                 cursor.execute(
@@ -555,16 +523,8 @@ class Database:
                 ('ruc_empresa', '10730291529', 'RUC de la empresa'),
                 ('direccion_empresa', 'Jr. José Francisco de Zela 1338', 'Dirección de la empresa'),
                 ('telefono_empresa', '994-618-239', 'Teléfono de la empresa'),
-                ('email_empresa', 'donmanuelito@gmail.com', 'Email de la empresa'),
                 ('moneda', 'PEN', 'Moneda utilizada'),
-                ('igv', '18', 'Porcentaje de IGV'),
-                ('serie_boleta', 'B001', 'Serie para boletas'),
-                ('serie_factura', 'F001', 'Serie para facturas'),
-                ('stock_minimo_global', '10', 'Stock mínimo por defecto'),
-                ('dias_alerta_vencimiento', '30', 'Días para alertar vencimiento'),
-                ('ruta_backups', './backups', 'Ruta para almacenar backups'),
-                ('dias_retencion_auditoria', '90', 'Días de retención de auditoría'),
-                ('tiempo_sesion', '30', 'Tiempo de sesión en minutos')
+                ('igv', '18', 'Porcentaje de IGV')
             ]
 
             for clave, valor, descripcion in configuraciones:
@@ -605,9 +565,9 @@ class Database:
 
         return last_id
 
-    def verificar_credenciales(self, username, password_hash):
-        query = "SELECT password_hash FROM usuario WHERE username = ? AND estado_usuario = 'activo'"
-        result = self.execute_query(query, (username,))
+    def verificar_credenciales(self, usuario, contraseña):
+        query = "SELECT contraseña FROM empleados WHERE usuario = ? AND activo = 1"
+        result = self.execute_query(query, (usuario,))
 
         if not result:
             return False
@@ -616,36 +576,10 @@ class Database:
 
         # Verificar contraseña con bcrypt
         try:
-            return bcrypt.checkpw(password_hash.encode('utf-8'), hashed_password)
+            return bcrypt.checkpw(contraseña.encode('utf-8'), hashed_password)
         except Exception as e:
             print(f"Error verificando contraseña: {e}")
             return False
-
-    def obtener_reporte_comprobantes(self, fecha_inicio=None, fecha_fin=None):
-        """Obtiene una lista de comprobantes, filtrados por fecha si se especifica."""
-        # Query base
-        query = """
-        SELECT 
-            c.id, c.tipo, c.serie, c.numero, c.fecha_emision, v.total, c.estado_sunat, cl.nombre 
-        FROM 
-            comprobantes c
-        JOIN 
-            ventas v ON c.venta_id = v.id
-        LEFT JOIN 
-            clientes cl ON c.cliente_id = cl.id
-        """
-        
-        # Agregar filtro de fechas si se envían
-        params = []
-        if fecha_inicio and fecha_fin:
-            # Filtramos por la fecha (ignorando la hora para el rango)
-            query += " WHERE DATE(c.fecha_emision) BETWEEN ? AND ?"
-            params = [fecha_inicio, fecha_fin]
-            
-        query += " ORDER BY c.fecha_emision DESC"
-        
-        # Ejecutar
-        return self.execute_query(query, params if params else None)
 
     # Triggers → Lógica de negocio automatizada
     def triggers(self, cursor):
@@ -702,13 +636,13 @@ class Database:
             CREATE TRIGGER calcular_subtotal_detalle
             BEFORE INSERT ON detalle_venta
             FOR EACH ROW
-            WHEN NEW.subtotal_detalle = 0 OR NEW.subtotal_detalle IS NULL
             BEGIN
-                SELECT RAISE(ABORT, 'Error: Debe calcular el subtotal antes de insertar');
+                SELECT 
+                    (NEW.cantidad_detalle * NEW.precio_unitario_detalle) - COALESCE(NEW.descuento_aplicado, 0);
             END
         ''')
 
-    # TRIGGERS DE STOCK
+    # TRIGGERS DE STOCK - ACTUALIZACIÓN
 
         # TRIGGER 5: Actualizar stock después de venta
         cursor.execute('DROP TRIGGER IF EXISTS actualizar_stock_despues_venta')
@@ -866,20 +800,6 @@ class Database:
             END
         ''')
 
-        # TRIGGER 14b: Validar fechas de promoción al actualizar
-        cursor.execute('DROP TRIGGER IF EXISTS validar_fechas_promocion_update')
-        cursor.execute('''
-            CREATE TRIGGER validar_fechas_promocion_update
-            BEFORE UPDATE ON promocion
-            FOR EACH ROW
-            BEGIN
-                SELECT CASE
-                    WHEN NEW.fecha_fin <= NEW.fecha_inicio
-                    THEN RAISE(ABORT, 'La fecha de fin debe ser posterior a la fecha de inicio')
-                END;
-            END
-        ''')
-
         # TRIGGER 15: Actualizar estado de promoción expirada
         cursor.execute('DROP TRIGGER IF EXISTS actualizar_estado_promocion_expirada')
         cursor.execute('''
@@ -894,48 +814,20 @@ class Database:
             END
         ''')
 
-        # TRIGGER 15b: Auto-expirar al insertar si la fecha ya pasó
-        cursor.execute('DROP TRIGGER IF EXISTS actualizar_estado_promocion_expirada_insert')
-        cursor.execute('''
-            CREATE TRIGGER actualizar_estado_promocion_expirada_insert
-            AFTER INSERT ON promocion
-            FOR EACH ROW
-            WHEN datetime('now') > NEW.fecha_fin AND NEW.estado_promocion != 'expirada'
-            BEGIN
-                UPDATE promocion
-                SET estado_promocion = 'expirada'
-                WHERE id_promocion = NEW.id_promocion;
-            END
-        ''')
-
-        # TRIGGER prevent manual setting to 'expirada' on INSERT/UPDATE when fecha_fin not passed
-        cursor.execute('DROP TRIGGER IF EXISTS prevenir_marcar_expirada_insert')
-        cursor.execute('''
-            CREATE TRIGGER prevenir_marcar_expirada_insert
-            BEFORE INSERT ON promocion
-            FOR EACH ROW
-            BEGIN
-                SELECT CASE
-                    WHEN NEW.estado_promocion = 'expirada' AND datetime('now') <= NEW.fecha_fin
-                    THEN RAISE(ABORT, 'No se puede marcar como expirada manualmente antes de la fecha fin')
-                END;
-            END
-        ''')
-
-        cursor.execute('DROP TRIGGER IF EXISTS prevenir_marcar_expirada_update')
-        cursor.execute('''
-            CREATE TRIGGER prevenir_marcar_expirada_update
-            BEFORE UPDATE ON promocion
-            FOR EACH ROW
-            BEGIN
-                SELECT CASE
-                    WHEN NEW.estado_promocion = 'expirada' AND datetime('now') <= NEW.fecha_fin
-                    THEN RAISE(ABORT, 'No se puede marcar como expirada manualmente antes de la fecha fin')
-                END;
-            END
-        ''')
-
     # TRIGGERS DE PRODUCTOS
+
+        # TRIGGER 16: Actualizar fecha de modificación de productos
+        cursor.execute('DROP TRIGGER IF EXISTS actualizar_fecha_producto')
+        cursor.execute('''
+            CREATE TRIGGER actualizar_fecha_producto
+            BEFORE UPDATE ON productos
+            FOR EACH ROW
+            BEGIN
+                UPDATE productos
+                SET fecha_actualizacion = CURRENT_TIMESTAMP
+                WHERE id_producto = NEW.id_producto;
+            END
+        ''')
 
         # TRIGGER 17: Validar descuento no mayor al 100%
         cursor.execute('DROP TRIGGER IF EXISTS validar_descuento_promocion')

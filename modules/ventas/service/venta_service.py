@@ -1,6 +1,7 @@
 ## Service de Ventas - Sistema Minimarket → Lógica de negocio
 
 from datetime import datetime
+import json
 from modules.ventas.models.venta_model import VentaModel
 
 # → Servicio de ventas. Contiene toda la lógica de negocio.
@@ -16,8 +17,19 @@ class VentaService:
 
 # → Procesa una venta completa con validación y manejo de transacciones. Los triggers de BD se encargan de validar stock y actualizar automáticamente.
 # Las promociones se aplican automáticamente desde la BD según configuración previa.
-    def procesar_venta_completa(self, carrito, empleado_id=1, metodo_pago="efectivo"):
+    def procesar_venta_completa(self, carrito, empleado_id=1, metodo_pago="efectivo", datos_pago_tarjeta=None):
         from core.database import db
+        
+        # Si es pago con tarjeta, guardar datos como JSON en metodo_pago
+        if metodo_pago == 'tarjeta' and datos_pago_tarjeta:
+            metodo_pago_str = json.dumps({
+                'tipo': 'tarjeta',
+                'charge_id': datos_pago_tarjeta.get('charge_id'),
+                'reference_code': datos_pago_tarjeta.get('reference_code'),
+                'email': datos_pago_tarjeta.get('email')
+            })
+        else:
+            metodo_pago_str = metodo_pago
         
         conexion = None
         try:
@@ -63,7 +75,7 @@ class VentaService:
                 INSERT INTO ventas (id_venta, fecha_venta, id_empleado, total_venta, descuento_venta,
                                     descuento_pct, descuento_tipo, metodo_pago, estado_venta)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (venta_id, fecha_hora, empleado_id, total, round(descuento_total,2), descuento_pct_global, "promocion", metodo_pago, 'completado'))
+            ''', (venta_id, fecha_hora, empleado_id, total, round(descuento_total,2), descuento_pct_global, "promocion", metodo_pago_str, 'completado'))
 
             # 2. Insertar detalles de venta
             # Los triggers automáticamente:
@@ -105,7 +117,7 @@ class VentaService:
                             datos_ini = stock_inicial_map[id_prod]
                             
                             if alertas_service.verificar_cambio_stock(datos_ini['stock'], stock_nuevo, datos_ini['minimo']):
-                                alertas.append(f"⚠️ ALERTA: El stock de '{datos_ini['nombre']}' ha bajado del mínimo ({datos_ini['minimo']}). Stock actual: {stock_nuevo}")
+                                alertas.append(f"ALERTA: El stock de '{datos_ini['nombre']}' ha bajado del mínimo ({datos_ini['minimo']}). Stock actual: {stock_nuevo}")
             except Exception as e:
                 print(f"Error verificando alertas: {e}")
 
@@ -125,7 +137,7 @@ class VentaService:
             elif 'cantidad debe ser mayor' in error_msg.lower():
                 return False, None, "Error: La cantidad debe ser mayor a 0", []
             else:
-                return False, None, f"Error al procesar venta: {error_msg}", []
+                return False, None, f"Error al procesar venta: {error_msg}", [] 
 
 # → Obtiene información completa de una venta.
     def obtener_venta(self, venta_id):

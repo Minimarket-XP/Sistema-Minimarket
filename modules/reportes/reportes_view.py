@@ -16,9 +16,10 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QPushButton, QTabWidget, QDateEdit, QComboBox, QFileDialog, QMessageBox,
                              QTableWidget, QTableWidgetItem, QSizePolicy)
 from PyQt5.QtCore import Qt, QDate
-from shared.styles import TITULO
+from shared.styles import TITULO, TablaNoEditableCSS
 from modules.ventas.service.venta_service import VentaService
 from modules.reportes.exportador_service import exportar_pdf, exportar_excel
+from modules.productos.view.inventario_view import TablaNoEditable
 import pandas as pd
 from core.database import db
 
@@ -68,7 +69,7 @@ class ReportesFrame(QWidget):
                 border-radius: 6px;
                 background-color: white;
                 font-size: 13px;
-                min-width: 160px;
+                min-width: 200px;
             }
             QDateEdit:focus, QComboBox:focus {
                 border: 2px solid #3498db;
@@ -148,17 +149,17 @@ class ReportesFrame(QWidget):
                 border: 2px solid #bdc3c7;
                 border-radius: 8px;
                 background-color: white;
-                padding: 10px;
+                padding: 4px;
             }
             QTabBar::tab {
                 background-color: #ecf0f1;
                 color: #2c3e50;
-                padding: 12px 25px;
-                margin-right: 5px;
+                padding: 8px 40px;
+                margin-right: 3px;
                 border-top-left-radius: 6px;
                 border-top-right-radius: 6px;
                 font-weight: bold;
-                font-size: 13px;
+                font-size: 11px;
             }
             QTabBar::tab:selected {
                 background-color: #3498db;
@@ -197,7 +198,7 @@ class ReportesFrame(QWidget):
             v1.addWidget(self.placeholder1)
         self.tabs.addTab(self.tab_ventas, "Ventas por periodo")
         # Tabla debajo del gráfico (ventas)
-        self.table_ventas = QTableWidget()
+        self.table_ventas = TablaNoEditable()
         self._style_table(self.table_ventas)
         v1.addWidget(self.table_ventas)
 
@@ -219,7 +220,7 @@ class ReportesFrame(QWidget):
             v2.addWidget(self.placeholder2)
         self.tabs.addTab(self.tab_prod, "Productos Top 10")
         # Tabla debajo del gráfico (productos)
-        self.table_prod = QTableWidget()
+        self.table_prod = TablaNoEditable()
         self._style_table(self.table_prod)
         v2.addWidget(self.table_prod)
 
@@ -240,24 +241,57 @@ class ReportesFrame(QWidget):
             v3.addWidget(self.placeholder3)
         self.tabs.addTab(self.tab_gan, "Ganancias/Pérdidas")
         # Tabla debajo del gráfico (resumen)
-        self.table_gan = QTableWidget()
+        self.table_gan = TablaNoEditable()
         self._style_table(self.table_gan)
         v3.addWidget(self.table_gan)
 
-        layout.addWidget(self.tabs)
-
-        # Tabla Comprobantes Emitidos
-        self.tab_comp = QWidget()
-        v4 = QVBoxLayout(self.tab_comp)
+        # Tab 4: Comprobantes Emitidos
+        self.tab_comprobantes = QWidget()
+        v4 = QVBoxLayout(self.tab_comprobantes)
         v4.setContentsMargins(15, 15, 15, 15)
         v4.setSpacing(15)
         
-        # Tabla para el nuevo reporte de Comprobantes (Boletas/Facturas)
-        self.table_comprobantes = QTableWidget() 
+        # Leyenda de comprobantes con mejor organización
+        leyenda_frame = QWidget()
+        leyenda_frame.setStyleSheet("""
+            QWidget {
+                background-color: #e8f4f8;
+                border-radius: 8px;
+                padding: 12px;
+            }
+        """)
+        leyenda_layout = QHBoxLayout(leyenda_frame)
+        leyenda_layout.setSpacing(20)
+        
+        # Título de la leyenda
+        titulo_leyenda = QLabel("Leyenda:")
+        titulo_leyenda.setStyleSheet("font-weight: bold; font-size: 14px; color: #2c3e50;")
+        leyenda_layout.addWidget(titulo_leyenda)
+        
+        # Items de leyenda organizados
+        items_leyenda = [
+            ("🟢 Boleta", "#27ae60"),
+            ("🔵 Factura", "#3498db"),
+            ("Tarjeta", "#9b59b6"),
+            ("Efectivo", "#2ecc71"),
+            ("Yape/Plin", "#e74c3c"),
+            ("Transferencia", "#f39c12")
+        ]
+        
+        for texto, color in items_leyenda:
+            label = QLabel(texto)
+            label.setStyleSheet(f"font-size: 13px; color: {color}; font-weight: bold;")
+            leyenda_layout.addWidget(label)
+        
+        leyenda_layout.addStretch()
+        v4.addWidget(leyenda_frame)
+        
+        # Tabla de comprobantes
+        self.table_comprobantes = TablaNoEditable()
         self._style_table(self.table_comprobantes)
         v4.addWidget(self.table_comprobantes)
-
-        self.tabs.addTab(self.tab_comp, "Comprobantes Emitidos")
+        
+        self.tabs.addTab(self.tab_comprobantes, "Comprobantes Emitidos")
 
         layout.addWidget(self.tabs)
 
@@ -332,68 +366,9 @@ class ReportesFrame(QWidget):
         # Inicializar gráficos
         self.actualizar()
 
+# → Aplicar estilo a las tablas
     def _style_table(self, table):
-        """Aplica estilos modernos a una tabla"""
-        table.setStyleSheet("""
-            QTableWidget {
-                background-color: white;
-                alternate-background-color: #f8f9fa;
-                border: 1px solid #dee2e6;
-                border-radius: 6px;
-                gridline-color: #dee2e6;
-                font-size: 12px;
-            }
-            QTableWidget::item {
-                padding: 8px;
-                border-bottom: 1px solid #e9ecef;
-            }
-            QTableWidget::item:selected {
-                background-color: #3498db;
-                color: white;
-            }
-            QHeaderView::section {
-                background-color: #34495e;
-                color: white;
-                padding: 10px;
-                border: none;
-                font-weight: bold;
-                font-size: 13px;
-            }
-            QHeaderView::section:first {
-                border-top-left-radius: 6px;
-            }
-            QHeaderView::section:last {
-                border-top-right-radius: 6px;
-            }
-            QScrollBar:vertical {
-                border: none;
-                background-color: #f8f9fa;
-                width: 12px;
-                border-radius: 6px;
-            }
-            QScrollBar::handle:vertical {
-                background-color: #bdc3c7;
-                border-radius: 6px;
-                min-height: 20px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background-color: #95a5a6;
-            }
-            QScrollBar:horizontal {
-                border: none;
-                background-color: #f8f9fa;
-                height: 12px;
-                border-radius: 6px;
-            }
-            QScrollBar::handle:horizontal {
-                background-color: #bdc3c7;
-                border-radius: 6px;
-                min-width: 20px;
-            }
-            QScrollBar::handle:horizontal:hover {
-                background-color: #95a5a6;
-            }
-        """)
+        table.setStyleSheet(TablaNoEditableCSS)
         table.setAlternatingRowColors(True)
         table.verticalHeader().setVisible(False)
 
@@ -624,9 +599,10 @@ class ReportesFrame(QWidget):
                             fontweight='bold', fontsize=10, color='#2c3e50')
 
                 ax2.set_xticks(positions)
-                # reduce font size for long product names and rotate for readability
-                ax2.set_xticklabels(names, rotation=45, ha='right', fontsize=10)
-                ax2.tick_params(axis='x', which='major', labelsize=10, colors='#34495e')
+                # Truncar nombres largos y reducir font size
+                truncated_names = [name[:20] + '...' if len(name) > 20 else name for name in names]
+                ax2.set_xticklabels(truncated_names, rotation=30, ha='right', fontsize=8)
+                ax2.tick_params(axis='x', which='major', labelsize=8, colors='#34495e')
                 ax2.tick_params(axis='y', colors='#34495e')
 
                 ax2.set_title('Top 10 Productos más vendidos', fontsize=16,
@@ -645,9 +621,9 @@ class ReportesFrame(QWidget):
                     spine.set_edgecolor('#bdc3c7')
                     spine.set_linewidth(1.5)
 
-                # leave extra bottom margin so rotated labels don't overlap
+                # Reducir margen inferior
                 try:
-                    self.canvas2.figure.subplots_adjust(bottom=0.25, top=0.92)
+                    self.canvas2.figure.subplots_adjust(bottom=0.15, top=0.92)
                 except Exception:
                     pass
             else:
@@ -676,6 +652,12 @@ class ReportesFrame(QWidget):
             self.table_prod.setColumnCount(len(cols_p))
             self.table_prod.setRowCount(len(df_p.index))
             self.table_prod.setHorizontalHeaderLabels(display_cols_p)
+            
+            # Anchos fijos para tabla de productos
+            anchos_productos = [400, 180, 200]  # Producto, Cantidad Vendida, Ingresos Totales
+            for i, ancho in enumerate(anchos_productos[:len(cols_p)]):
+                self.table_prod.setColumnWidth(i, ancho)
+            
             for r_idx in range(len(df_p.index)):
                 for c, col in enumerate(cols_p):
                     val = df_p.iloc[r_idx][col]
@@ -686,8 +668,6 @@ class ReportesFrame(QWidget):
                     else:
                         item.setTextAlignment(Qt.AlignCenter)
                     self.table_prod.setItem(r_idx, c, item)
-            self.table_prod.resizeColumnsToContents()
-            self.table_prod.horizontalHeader().setStretchLastSection(True)
         except Exception:
             # limpiar tabla
             self.table_prod.setRowCount(0)
@@ -783,145 +763,129 @@ class ReportesFrame(QWidget):
             if getattr(self, 'placeholder3', None) is not None:
                 self.placeholder3.setText("Matplotlib no está instalado. Instala: pip install matplotlib")
 
-        #-------------------
-        try:
-            conn = db.get_connection()
-            df_v = pd.read_sql_query(
-                "SELECT fecha, total, descuento FROM ventas WHERE DATE(fecha) BETWEEN ? AND ? ORDER BY fecha ASC",
-                conn, params=[fecha_desde_str, fecha_hasta_str], parse_dates=['fecha']
-            )
-            conn.close()
-        except Exception:
-            df_v = pd.DataFrame(columns=['fecha', 'total', 'descuento'])
-
-        # Procesar datos para Tab 1 (Ventas por periodo)
-        if not df_v.empty:
-            df_v['fecha'] = pd.to_datetime(df_v['fecha'])
-            df_v.set_index('fecha', inplace=True)
-            df_v['total'] = df_v['total'].fillna(0).astype(float)
-            df_v['descuento'] = df_v['descuento'].fillna(0).astype(float)
-            df_v['gross'] = df_v['total'] + df_v['descuento']
-            freq = {'Diario': 'D', 'Semanal': 'W', 'Mensual': 'M'}.get(periodo, 'D')
-            series = df_v['total'].resample(freq).sum()
-        else:
-            series = pd.Series([], dtype=float)
-
-        # Pintar Gráfico 1
-        if self._has_mpl and self.canvas1 is not None:
-            try:
-                self.canvas1.figure.clear()
-                ax1 = self.canvas1.figure.add_subplot(111)
-            except Exception:
-                ax1 = self.canvas1.figure.subplots()
-
-            if not series.empty:
-                try:
-                    import matplotlib.dates as mdates
-                    ax1.xaxis_date()
-                    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%d-%b'))
-                except Exception:
-                    pass
-
-                series.plot(ax=ax1, marker='o', linewidth=2.5, markersize=8, color='#3498db')
-                ax1.fill_between(series.index, series.values, alpha=0.3, color='#3498db')
-                ax1.set_title(f"Ventas ({periodo})", fontsize=16, fontweight='bold', color='#2c3e50')
-                ax1.grid(True, linestyle='--', alpha=0.3)
-                ax1.set_facecolor('#f8f9fa')
-            else:
-                ax1.text(0.5, 0.5, 'No hay ventas en el rango', ha='center')
-            
-            try:
-                self.canvas1.figure.tight_layout()
-            except: pass
-            self.canvas1.draw()
-
-        # Pintar Tabla 1 (Ventas)
-        try:
-            self._df_v = df_v.reset_index() if not df_v.empty else pd.DataFrame()
-            if not self._df_v.empty:
-                cols = list(self._df_v.columns)
-                self.table_ventas.setColumnCount(len(cols))
-                self.table_ventas.setRowCount(len(self._df_v.index))
-                self.table_ventas.setHorizontalHeaderLabels(cols)
-                for r_idx in range(len(self._df_v.index)):
-                    for c, col in enumerate(cols):
-                        val = self._df_v.iloc[r_idx][col]
-                        self.table_ventas.setItem(r_idx, c, QTableWidgetItem(str(val)))
-                self.table_ventas.resizeColumnsToContents()
-            else:
-                self.table_ventas.setRowCount(0)
-        except Exception:
-            self.table_ventas.setRowCount(0)
-
-        # Tab 2 y 3 (Resumido para ahorrar espacio, mantén tu lógica de Productos y Ganancias aquí si ya funciona)
-        # ... [Aquí iría la lógica de Tab 2 y 3 que ya tenías] ...
-        # (Para asegurar que no se borre nada, he incluido la lógica básica de actualización de Tab 2 abajo)
-        
-        # Actualizar Tab 2 (Productos)
-        try:
-            conn = db.get_connection()
-            df_p = pd.read_sql_query('''
-                SELECT p.nombre, SUM(dv.cantidad) as cant FROM detalle_ventas dv
-                JOIN ventas v ON dv.venta_id = v.id JOIN productos p ON dv.producto_id = p.id
-                WHERE DATE(v.fecha) BETWEEN ? AND ? GROUP BY p.nombre ORDER BY cant DESC LIMIT 10
-            ''', conn, params=[fecha_desde_str, fecha_hasta_str])
-            conn.close()
-            self._df_p = df_p
-            # (Aquí iría el código del gráfico de barras canvas2, asumo que ya lo tienes)
-        except:
-            self._df_p = pd.DataFrame()
-        #-------------------
-        # Tab 4: Comprobantes Emitidos
-        try:
-            # Llamamos a la función de database.py con las fechas del filtro
-            comprobantes = db.obtener_reporte_comprobantes(fecha_desde_str, fecha_hasta_str)
-            
-            # Definir columnas de la tabla
-            headers = ["ID", "Tipo", "Serie", "Número", "Fecha Emisión", "Total", "Estado", "Cliente"]
-            self.table_comprobantes.setColumnCount(len(headers))
-            self.table_comprobantes.setHorizontalHeaderLabels(headers)
-            
-            if comprobantes:
-                self.table_comprobantes.setRowCount(len(comprobantes))
-                for row_idx, comp in enumerate(comprobantes):
-                    # comp es una tupla: (id, tipo, serie, numero, fecha, total, estado, cliente)
-                    # Indices: 0=id, 1=tipo, 2=serie, 3=num, 4=fecha, 5=total, 6=estado, 7=cliente
-                    
-                    for col_idx, valor in enumerate(comp):
-                        val_str = ""
-                        
-                        # Formateo especial para el Total (índice 5)
-                        if col_idx == 5: 
-                            try:
-                                val_str = f"S/ {float(valor):.2f}"
-                            except:
-                                val_str = str(valor)
-                        # Formateo para Cliente (índice 7) si es None
-                        elif col_idx == 7:
-                            val_str = str(valor) if valor else "Cliente Genérico"
-                        else:
-                            val_str = str(valor) if valor is not None else ""
-                        
-                        item = QTableWidgetItem(val_str)
-                        item.setTextAlignment(Qt.AlignCenter)
-                        self.table_comprobantes.setItem(row_idx, col_idx, item)
-            else:
-                self.table_comprobantes.setRowCount(0)
-                
-            # Ajustar anchos
-            self.table_comprobantes.resizeColumnsToContents()
-            self.table_comprobantes.horizontalHeader().setStretchLastSection(True)
-            
-        except Exception as e:
-            print(f"Error cargando comprobantes: {e}")
-            self.table_comprobantes.setRowCount(0)
-            
         # Store dataframes for export (use non-indexed df for exports)
         try:
             self._df_v = df_v.reset_index()
         except Exception:
             self._df_v = pd.DataFrame()
         self._df_p = df_p if not df_p.empty else pd.DataFrame()
+
+        # Tab 4: Cargar comprobantes emitidos
+        try:
+            conn = db.get_connection()
+            df_comp = pd.read_sql_query("""
+                SELECT 
+                    c.id_comprobante as ID,
+                    c.tipo_comprobante as Tipo,
+                    c.serie_comprobante || '-' || c.numero_comprobante as Serie_Numero,
+                    c.fecha_emision_comprobante as Fecha_Emision,
+                    c.nombre_cliente as Cliente,
+                    c.num_documento as DNI,
+                    c.razon_social as Razon_Social,
+                    c.ruc_emisor as RUC,
+                    c.monto_total_comprobante as Monto_Total,
+                    v.metodo_pago as Metodo_Pago,
+                    c.estado_sunat as Estado_SUNAT
+                FROM comprobante c
+                INNER JOIN ventas v ON c.id_venta = v.id_venta
+                WHERE DATE(c.fecha_emision_comprobante) BETWEEN ? AND ?
+                ORDER BY c.fecha_emision_comprobante DESC
+            """, conn, params=[fecha_desde_str, fecha_hasta_str])
+            conn.close()
+        except Exception as e:
+            print(f"Error cargando comprobantes: {e}")
+            df_comp = pd.DataFrame()
+        
+        self._df_comp = df_comp
+        
+        # Poblar tabla de comprobantes con anchos fijos
+        if not df_comp.empty:
+            cols_comp = ['ID', 'Tipo', 'Serie-Número', 'Fecha Emisión', 'Cliente', 
+                        'DNI/RUC', 'Monto Total', 'Método Pago', 'Estado SUNAT']
+            self.table_comprobantes.setColumnCount(len(cols_comp))
+            self.table_comprobantes.setRowCount(len(df_comp))
+            self.table_comprobantes.setHorizontalHeaderLabels(cols_comp)
+            
+            # Anchos fijos para las columnas
+            anchos_comprobantes = [60, 80, 140, 150, 350, 100, 110, 130, 120]
+            for i, ancho in enumerate(anchos_comprobantes):
+                self.table_comprobantes.setColumnWidth(i, ancho)
+            
+            for r_idx in range(len(df_comp)):
+                # ID
+                item = QTableWidgetItem(str(df_comp.iloc[r_idx]['ID']))
+                item.setTextAlignment(Qt.AlignCenter)
+                self.table_comprobantes.setItem(r_idx, 0, item)
+                
+                # Tipo con color
+                tipo = str(df_comp.iloc[r_idx]['Tipo']).upper()
+                item_tipo = QTableWidgetItem(tipo)
+                item_tipo.setTextAlignment(Qt.AlignCenter)
+                if tipo == 'BOLETA':
+                    item_tipo.setForeground(Qt.darkGreen)
+                else:
+                    item_tipo.setForeground(Qt.blue)
+                self.table_comprobantes.setItem(r_idx, 1, item_tipo)
+                
+                # Serie-Número
+                item = QTableWidgetItem(str(df_comp.iloc[r_idx]['Serie_Numero']))
+                item.setTextAlignment(Qt.AlignCenter)
+                self.table_comprobantes.setItem(r_idx, 2, item)
+                
+                # Fecha
+                fecha_str = str(df_comp.iloc[r_idx]['Fecha_Emision'])[:19]
+                item = QTableWidgetItem(fecha_str)
+                item.setTextAlignment(Qt.AlignCenter)
+                self.table_comprobantes.setItem(r_idx, 3, item)
+                
+                # Cliente (usar razón social si es factura, nombre si es boleta)
+                if tipo == 'FACTURA' and pd.notna(df_comp.iloc[r_idx].get('Razon_Social')):
+                    cliente = str(df_comp.iloc[r_idx]['Razon_Social'])
+                else:
+                    cliente = str(df_comp.iloc[r_idx]['Cliente'])
+                item = QTableWidgetItem(cliente)
+                self.table_comprobantes.setItem(r_idx, 4, item)
+                
+                # DNI/RUC
+                if tipo == 'FACTURA' and pd.notna(df_comp.iloc[r_idx].get('RUC')):
+                    doc = str(df_comp.iloc[r_idx]['RUC'])
+                else:
+                    doc = str(df_comp.iloc[r_idx]['DNI']) if pd.notna(df_comp.iloc[r_idx].get('DNI')) else '-'
+                item = QTableWidgetItem(doc)
+                item.setTextAlignment(Qt.AlignCenter)
+                self.table_comprobantes.setItem(r_idx, 5, item)
+                
+                # Monto
+                monto = float(df_comp.iloc[r_idx]['Monto_Total'])
+                item = QTableWidgetItem(f"S/ {monto:.2f}")
+                item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                self.table_comprobantes.setItem(r_idx, 6, item)
+                
+                # Método de pago con color
+                metodo = str(df_comp.iloc[r_idx]['Metodo_Pago']).lower()
+                item_metodo = QTableWidgetItem(metodo.upper())
+                item_metodo.setTextAlignment(Qt.AlignCenter)
+                
+                # Colorear según método de pago
+                if 'tarjeta' in metodo:
+                    item_metodo.setForeground(Qt.darkMagenta)
+                elif 'efectivo' in metodo:
+                    item_metodo.setForeground(Qt.darkGreen)
+                elif 'yape' in metodo or 'plin' in metodo:
+                    item_metodo.setForeground(Qt.red)
+                elif 'transfer' in metodo:
+                    item_metodo.setForeground(Qt.darkYellow)
+                
+                self.table_comprobantes.setItem(r_idx, 7, item_metodo)
+                
+                # Estado SUNAT
+                estado = str(df_comp.iloc[r_idx]['Estado_SUNAT']) if pd.notna(df_comp.iloc[r_idx].get('Estado_SUNAT')) else 'PENDIENTE'
+                item = QTableWidgetItem(estado)
+                item.setTextAlignment(Qt.AlignCenter)
+                self.table_comprobantes.setItem(r_idx, 8, item)
+        else:
+            self.table_comprobantes.setRowCount(0)
+            self.table_comprobantes.setColumnCount(0)
 
         # Poblar tabla de ventas (df_v may be empty)
         try:
@@ -933,15 +897,18 @@ class ReportesFrame(QWidget):
                 self.table_ventas.setColumnCount(len(cols_v))
                 self.table_ventas.setRowCount(len(self._df_v.index))
                 self.table_ventas.setHorizontalHeaderLabels(display_cols)
+                
+                # Anchos fijos para tabla de ventas
+                anchos_ventas = [180, 120, 120, 120]  # fecha_venta, total_venta, descuento_venta, gross
+                for i, ancho in enumerate(anchos_ventas[:len(cols_v)]):
+                    self.table_ventas.setColumnWidth(i, ancho)
+                
                 for r_idx in range(len(self._df_v.index)):
                     for c, col in enumerate(cols_v):
                         val = self._df_v.iloc[r_idx][col]
                         item = QTableWidgetItem(str(val))
                         item.setTextAlignment(Qt.AlignCenter)
                         self.table_ventas.setItem(r_idx, c, item)
-                self.table_ventas.resizeColumnsToContents()
-                # Ajustar el ancho para que se vea mejor
-                self.table_ventas.horizontalHeader().setStretchLastSection(True)
             else:
                 self.table_ventas.setRowCount(0)
                 self.table_ventas.setColumnCount(0)
@@ -960,7 +927,7 @@ class ReportesFrame(QWidget):
             df = self._df_p if hasattr(self, '_df_p') else pd.DataFrame()
             titulo = 'Productos Top 10'
             default_name = 'productos_top10'
-        else:
+        elif idx == 2:
             # Build a small dataframe summary for ganancias
             if not hasattr(self, '_df_v') or self._df_v.empty:
                 df = pd.DataFrame()
@@ -971,6 +938,15 @@ class ReportesFrame(QWidget):
                 df = pd.DataFrame([{'Bruto': total_gross, 'Descuentos': total_discount, 'Neto': total_net}])
             titulo = 'Ganancias y Pérdidas'
             default_name = 'ganancias_perdidas'
+        elif idx == 3:
+            # Comprobantes emitidos
+            df = self._df_comp if hasattr(self, '_df_comp') else pd.DataFrame()
+            titulo = 'Comprobantes Emitidos'
+            default_name = 'comprobantes_emitidos'
+        else:
+            df = pd.DataFrame()
+            titulo = 'Reporte'
+            default_name = 'reporte'
 
         if df.empty:
             QMessageBox.information(self, 'Exportar', 'No hay datos para exportar')

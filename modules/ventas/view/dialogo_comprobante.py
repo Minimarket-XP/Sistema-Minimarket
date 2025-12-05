@@ -15,14 +15,15 @@ class DialogoComprobante(QDialog):
         self.comprobante_service = comprobante_service
         self.datos_cliente = None
         self.metodo_pago = 'efectivo'
+        self.datos_pago_tarjeta = None
         self.setWindowTitle("Generar Comprobante")
         self.setModal(True)
-        self.setFixedSize(500, 550)
+        self.setFixedSize(500, 485)
         self.initUI()
     
     def initUI(self):
         layout = QVBoxLayout(self)
-        layout.setSpacing(15)
+        layout.setSpacing(10)
         
         # Título
         titulo = QLabel("Generación de Comprobante")
@@ -31,7 +32,7 @@ class DialogoComprobante(QDialog):
                 color: {THEME_COLOR};
                 font-size: 18px;
                 font-weight: bold;
-                padding: 10px;
+                padding: 5px;
             }}
         """)
         titulo.setAlignment(Qt.AlignCenter)
@@ -92,7 +93,7 @@ class DialogoComprobante(QDialog):
             }
         """)
         
-        self.btn_consultar = QPushButton("🔍 Consultar")
+        self.btn_consultar = QPushButton("Consultar")
         self.btn_consultar.setEnabled(False)
         self.btn_consultar.setStyleSheet(f"""
             QPushButton {{
@@ -153,6 +154,7 @@ class DialogoComprobante(QDialog):
         self.btn_group_pago = QButtonGroup()
         
         self.rb_efectivo = QRadioButton("Efectivo")
+        self.rb_tarjeta = QRadioButton("Tarjeta (Culqi)")
         self.rb_yape = QRadioButton("Yape")
         self.rb_plin = QRadioButton("Plin")
         self.rb_transferencia = QRadioButton("Transferencia")
@@ -160,11 +162,13 @@ class DialogoComprobante(QDialog):
         self.rb_efectivo.setChecked(True)
         
         self.btn_group_pago.addButton(self.rb_efectivo, 0)
-        self.btn_group_pago.addButton(self.rb_yape, 1)
-        self.btn_group_pago.addButton(self.rb_plin, 2)
-        self.btn_group_pago.addButton(self.rb_transferencia, 3)
+        self.btn_group_pago.addButton(self.rb_tarjeta, 1)
+        self.btn_group_pago.addButton(self.rb_yape, 2)
+        self.btn_group_pago.addButton(self.rb_plin, 3)
+        self.btn_group_pago.addButton(self.rb_transferencia, 4)
         
         pago_layout.addWidget(self.rb_efectivo)
+        pago_layout.addWidget(self.rb_tarjeta)
         pago_layout.addWidget(self.rb_yape)
         pago_layout.addWidget(self.rb_plin)
         pago_layout.addWidget(self.rb_transferencia)
@@ -317,7 +321,9 @@ class DialogoComprobante(QDialog):
 # → Valida y confirma la generación del comprobante
     def generarComprobante(self):
         # Obtener método de pago seleccionado
-        if self.rb_yape.isChecked():
+        if self.rb_tarjeta.isChecked():
+            self.metodo_pago = 'tarjeta'
+        elif self.rb_yape.isChecked():
             self.metodo_pago = 'yape'
         elif self.rb_plin.isChecked():
             self.metodo_pago = 'plin'
@@ -325,6 +331,21 @@ class DialogoComprobante(QDialog):
             self.metodo_pago = 'transferencia'
         else:
             self.metodo_pago = 'efectivo'
+        
+        # Si es pago con tarjeta, procesar primero el pago
+        if self.metodo_pago == 'tarjeta':
+            if not self.procesarPagoTarjeta():
+                return  # Si el pago falla o se cancela, no continuar
+        
+        # Si es pago con Yape o Plin, mostrar QR
+        elif self.metodo_pago in ['yape', 'plin']:
+            if not self.procesarPagoQR():
+                return  # Si el pago se cancela, no continuar
+        
+        # Si es pago con transferencia, mostrar datos bancarios
+        elif self.metodo_pago == 'transferencia':
+            if not self.procesarPagoTransferencia():
+                return  # Si el pago se cancela, no continuar
         
         # Validar que se tengan datos del cliente SOLO para DNI/RUC
         if not self.rb_generico.isChecked() and not self.datos_cliente:
@@ -361,5 +382,71 @@ class DialogoComprobante(QDialog):
     def obtenerDatos(self):
         return {
             'datos_cliente': self.datos_cliente,
-            'metodo_pago': self.metodo_pago
+            'metodo_pago': self.metodo_pago,
+            'datos_pago_tarjeta': self.datos_pago_tarjeta
         }
+    
+# → Abrir dialogo de pago con tarjeta y procesar transaccion
+    def procesarPagoTarjeta(self):
+        from modules.ventas.view.dialogo_pago_tarjeta import DialogoPagoTarjeta        
+        # Obtener el total desde el parent (VentasFrame)
+        try:
+            total_venta = self.parent().total
+        except:
+            QMessageBox.warning(self, "Error", "No se pudo obtener el total de la venta")
+            return False
+        
+        # Abrir dialogo de pago con tarjeta
+        dialogo_tarjeta = DialogoPagoTarjeta(self, total_venta)
+        
+        if dialogo_tarjeta.exec_() == QDialog.Accepted:
+            # Pago exitoso - guardar datos
+            self.datos_pago_tarjeta = dialogo_tarjeta.get_resultado_pago()
+            return True
+        else:
+            # Pago cancelado o fallido
+            return False
+    
+# → Abrir dialogo de pago con Yape/Plin (QR)
+    def procesarPagoQR(self):
+        from modules.ventas.view.dialogo_pago_qr import DialogoPagoQR        
+        # Obtener el total desde el parent (VentasFrame)
+        try:
+            total_venta = self.parent().total
+        except:
+            QMessageBox.warning(self, "Error", "No se pudo obtener el total de la venta")
+            return False
+        
+        # Abrir dialogo de pago QR
+        dialogo_qr = DialogoPagoQR(self, total_venta, self.metodo_pago)
+        
+        if dialogo_qr.exec_() == QDialog.Accepted:
+            # Pago confirmado - guardar datos
+            self.datos_pago_tarjeta = dialogo_qr.get_resultado_pago()
+            return True
+        else:
+            # Pago cancelado
+            return False
+    
+# → Procesar pago por transferencia bancaria, abriendo el dialogo correspondiente
+    def procesarPagoTransferencia(self):
+        from modules.ventas.view.dialogo_pago_transferencia import DialogoPagoTransferencia
+        
+        # Obtener el total desde el parent (VentasFrame)
+        try:
+            total_venta = self.parent().total
+        except:
+            QMessageBox.warning(self, "Error", "No se pudo obtener el total de la venta")
+            return False
+        
+        # Abrir dialogo de transferencia
+        dialogo_transf = DialogoPagoTransferencia(self, total_venta)
+        
+        if dialogo_transf.exec_() == QDialog.Accepted:
+            # Pago confirmado - guardar datos
+            self.datos_pago_tarjeta = dialogo_transf.get_resultado_pago()
+            return True
+        else:
+            # Pago cancelado
+            return False
+            self.datos_pago_tarjeta = dialogo_tarjeta.get_resultado_pago()

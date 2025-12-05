@@ -580,7 +580,7 @@ class VentasFrame(QWidget):
             )
             return
         
-        # Mostrar diálogo flotante para capturar datos del cliente y método de pago
+    # Mostrar diálogo flotante para capturar datos del cliente y método de pago
         dialogo = DialogoComprobante(self, self.comprobante_service)
         
         if dialogo.exec_() == QDialog.Accepted:
@@ -588,44 +588,50 @@ class VentasFrame(QWidget):
             datos = dialogo.obtenerDatos()
             datos_cliente = datos.get('datos_cliente')
             metodo_pago = datos.get('metodo_pago', 'efectivo')
+            datos_pago_tarjeta = datos.get('datos_pago_tarjeta')
             
-            # Confirmar venta
-            reply = QMessageBox.question(
-                self, 
-                "Procesar Venta", 
-                f"¿Procesar venta por {formatear_precio(self.total)}?\nMétodo de pago: {metodo_pago.upper()}",
-                QMessageBox.Yes | QMessageBox.No
-            )
+            # Preparar mensaje de confirmación
+            msg_metodo = metodo_pago.upper()
+            if metodo_pago == 'tarjeta' and datos_pago_tarjeta:
+                msg_metodo = f"TARJETA (ID: {datos_pago_tarjeta.get('charge_id', 'N/A')[:20]}...)"
             
-            if reply == QMessageBox.Yes:
-                # Procesar la venta usando el SERVICE con el método de pago
-                success, venta_id, mensaje, alertas = self.venta_service.procesar_venta_completa(
-                    carrito=self.carrito,
-                    empleado_id=1,  # Por ahora usamos empleado 1 por defecto
-                    metodo_pago=metodo_pago
+            # Solo pedir confirmación si el pago es en EFECTIVO
+            if metodo_pago == 'efectivo':
+                confirmacion = QMessageBox.question(
+                    self,
+                    "Confirmar Venta",
+                    f"¿Desea procesar la venta por {msg_metodo} por un total de {formatear_precio(self.total)}?",
+                    QMessageBox.Yes | QMessageBox.No
                 )
+                if confirmacion != QMessageBox.Yes:
+                    return  # Usuario canceló la venta
+            
+            # Procesar la venta usando el SERVICE con el método de pago
+            success, venta_id, mensaje, alertas = self.venta_service.procesar_venta_completa(
+                carrito=self.carrito,
+                empleado_id=1,  # Por ahora usamos empleado 1 por defecto
+                metodo_pago=metodo_pago,
+                datos_pago_tarjeta=datos_pago_tarjeta
+            )
                 
-                if success:
-                    # Emitir comprobante automáticamente
-                    self.emitirComprobanteIntegrado(venta_id, datos_cliente, metodo_pago)
+            if success:
+                # Emitir comprobante automáticamente
+                self.emitirComprobanteIntegrado(venta_id, datos_cliente, metodo_pago)
                     
-                    # Mostrar alertas si existen
-                    if alertas:
-                        alertas_msg = "\n".join(alertas)
-                        QMessageBox.warning(
-                            self,
-                            "Alertas de Stock",
-                            f"Venta procesada exitosamente.\n\n{alertas_msg}"
-                        )
+                # Mostrar alertas si existen
+                if alertas:
+                    alertas_msg = "\n".join(alertas)
+                    QMessageBox.warning(
+                        self,
+                        "Alertas de Stock",
+                        f"Venta procesada exitosamente.\n\n{alertas_msg}"
+                    )
                     
-                    # Limpiar y recargar
-                    self.limpiarCarrito()
-                    self.cargarProductos()  # Recargar para actualizar stock
-                else:
-                    QMessageBox.critical(self, "Error en Venta", f"❌ {mensaje}")
-        else:
-            # Usuario canceló el diálogo
-            pass
+                # Limpiar y recargar
+                self.limpiarCarrito()
+                self.cargarProductos()  # Recargar para actualizar stock
+            else:
+                QMessageBox.critical(self, "Error en Venta", f"❌ {mensaje}")
 
 # → Emitir comprobante (boleta o factura) para una venta existente
     def emitirComprobante(self, venta_id):
