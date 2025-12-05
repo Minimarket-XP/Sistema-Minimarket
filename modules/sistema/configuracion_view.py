@@ -227,6 +227,277 @@ class ConfiguracionWidget(QWidget):
             {'clave': 'tiempo_sesion', 'descripcion': 'Tiempo de Sesión (minutos)'}
         ]
         self.crear_grupo(layout, "Configuración del Sistema", configs)
+        
+        # Agregar sección de gestión de backups
+        self.crear_grupo_backups(layout)
+    
+    def crear_grupo_backups(self, layout):
+        """Crea el grupo de gestión de backups"""
+        grupo = QGroupBox("Gestión de Backups")
+        grupo.setStyleSheet(f"""
+            QGroupBox {{
+                font-size: 14px;
+                font-weight: bold;
+                color: {PRIMARY_COLOR};
+                border: 2px solid {PRIMARY_COLOR};
+                border-radius: 8px;
+                margin-top: 10px;
+                padding-top: 10px;
+            }}
+            QGroupBox::title {{
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px;
+            }}
+        """)
+        
+        grupo_layout = QVBoxLayout()
+        grupo_layout.setSpacing(15)
+        
+        # Información de backups
+        info_label = QLabel("El sistema realiza backups automáticos diariamente a las 2:00 AM")
+        info_label.setStyleSheet("""
+            QLabel {
+                color: #7f8c8d;
+                font-size: 12px;
+                font-weight: normal;
+                padding: 5px;
+            }
+        """)
+        grupo_layout.addWidget(info_label)
+        
+        # Botones de acción para backups
+        botones_backup_layout = QHBoxLayout()
+        botones_backup_layout.setSpacing(10)
+        
+        btn_backup_manual = QPushButton("Crear Backup Manual")
+        btn_backup_manual.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {PRIMARY_COLOR};
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 6px;
+                font-weight: bold;
+                font-size: 13px;
+            }}
+            QPushButton:hover {{
+                background-color: #2980b9;
+            }}
+        """)
+        btn_backup_manual.clicked.connect(self.crear_backup_manual)
+        botones_backup_layout.addWidget(btn_backup_manual)
+        
+        btn_ver_backups = QPushButton("Ver Backups")
+        btn_ver_backups.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {SECONDARY_COLOR};
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 6px;
+                font-weight: bold;
+                font-size: 13px;
+            }}
+            QPushButton:hover {{
+                background-color: #16a085;
+            }}
+        """)
+        btn_ver_backups.clicked.connect(self.ver_backups)
+        botones_backup_layout.addWidget(btn_ver_backups)
+        
+        btn_restaurar = QPushButton("Restaurar Backup")
+        btn_restaurar.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {WARNING_COLOR};
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 6px;
+                font-weight: bold;
+                font-size: 13px;
+            }}
+            QPushButton:hover {{
+                background-color: #d68910;
+            }}
+        """)
+        btn_restaurar.clicked.connect(self.restaurar_backup)
+        botones_backup_layout.addWidget(btn_restaurar)
+        
+        botones_backup_layout.addStretch()
+        grupo_layout.addLayout(botones_backup_layout)
+        
+        grupo.setLayout(grupo_layout)
+        layout.addWidget(grupo)
+    
+    def crear_backup_manual(self):
+        """Crea un backup manual de la base de datos"""
+        try:
+            from modules.sistema.backup_service import backup_service
+            
+            # Confirmar acción
+            respuesta = QMessageBox.question(
+                self,
+                "Confirmar Backup",
+                "¿Desea crear un backup manual de la base de datos ahora?",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            
+            if respuesta == QMessageBox.Yes:
+                # Mostrar mensaje de espera
+                QMessageBox.information(
+                    self,
+                    "Creando Backup",
+                    "Creando backup de la base de datos. Por favor espere..."
+                )
+                
+                # Realizar backup
+                success, mensaje, ruta = backup_service.realizar_backup_manual(id_usuario=1)
+                
+                if success:
+                    QMessageBox.information(
+                        self,
+                        "Backup Exitoso",
+                        f"{mensaje}\n\nUbicación: {ruta}"
+                    )
+                else:
+                    QMessageBox.critical(
+                        self,
+                        "Error",
+                        f"No se pudo crear el backup:\n{mensaje}"
+                    )
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Error al crear backup: {str(e)}"
+            )
+    
+    def ver_backups(self):
+        """Muestra la lista de backups disponibles"""
+        try:
+            from modules.sistema.backup_service import backup_service
+            from PyQt5.QtWidgets import QDialog, QTableWidget, QTableWidgetItem, QHeaderView
+            
+            backups = backup_service.listar_backups()
+            
+            if not backups:
+                QMessageBox.information(
+                    self,
+                    "Sin Backups",
+                    "No se encontraron backups disponibles."
+                )
+                return
+            
+            # Crear diálogo para mostrar backups
+            dialog = QDialog(self)
+            dialog.setWindowTitle("Backups Disponibles")
+            dialog.setMinimumSize(800, 400)
+            
+            layout = QVBoxLayout(dialog)
+            
+            # Tabla de backups
+            tabla = QTableWidget()
+            tabla.setColumnCount(5)
+            tabla.setHorizontalHeaderLabels([
+                "Fecha", "Nombre", "Tipo", "Tamaño (MB)", "Ubicación"
+            ])
+            tabla.setRowCount(len(backups))
+            
+            for i, backup in enumerate(backups):
+                tabla.setItem(i, 0, QTableWidgetItem(backup['fecha'].strftime('%Y-%m-%d %H:%M:%S')))
+                tabla.setItem(i, 1, QTableWidgetItem(backup['nombre']))
+                tabla.setItem(i, 2, QTableWidgetItem(backup['tipo']))
+                tabla.setItem(i, 3, QTableWidgetItem(f"{backup['tamanio_mb']:.2f}"))
+                tabla.setItem(i, 4, QTableWidgetItem(backup['ruta']))
+            
+            tabla.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+            tabla.setEditTriggers(QTableWidget.NoEditTriggers)
+            tabla.setSelectionBehavior(QTableWidget.SelectRows)
+            
+            layout.addWidget(tabla)
+            
+            # Botón cerrar
+            btn_cerrar = QPushButton("Cerrar")
+            btn_cerrar.clicked.connect(dialog.accept)
+            layout.addWidget(btn_cerrar)
+            
+            dialog.exec_()
+            
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Error al listar backups: {str(e)}"
+            )
+    
+    def restaurar_backup(self):
+        """Restaura la base de datos desde un backup"""
+        try:
+            from modules.sistema.backup_service import backup_service
+            from PyQt5.QtWidgets import QFileDialog
+            
+            # Advertencia
+            respuesta = QMessageBox.warning(
+                self,
+                "Advertencia - Restaurar Backup",
+                "⚠️ ADVERTENCIA IMPORTANTE ⚠️\n\n"
+                "Restaurar un backup reemplazará TODA la base de datos actual.\n"
+                "Todos los datos desde el último backup se perderán.\n\n"
+                "Se creará un backup de seguridad antes de restaurar.\n\n"
+                "¿Está seguro de que desea continuar?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            
+            if respuesta != QMessageBox.Yes:
+                return
+            
+            # Seleccionar archivo de backup
+            archivo, _ = QFileDialog.getOpenFileName(
+                self,
+                "Seleccionar Backup",
+                backup_service.backup_dir,
+                "Archivos de Backup (*.db *.db.gz)"
+            )
+            
+            if not archivo:
+                return
+            
+            # Confirmar una vez más
+            respuesta_final = QMessageBox.question(
+                self,
+                "Confirmación Final",
+                f"¿Confirma que desea restaurar desde:\n\n{archivo}?\n\n"
+                "La aplicación se cerrará después de la restauración.",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            
+            if respuesta_final == QMessageBox.Yes:
+                success, mensaje = backup_service.restaurar_backup(archivo, id_usuario=1)
+                
+                if success:
+                    QMessageBox.information(
+                        self,
+                        "Restauración Exitosa",
+                        f"{mensaje}\n\nLa aplicación se cerrará ahora."
+                    )
+                    # Cerrar la aplicación
+                    from PyQt5.QtWidgets import QApplication
+                    QApplication.quit()
+                else:
+                    QMessageBox.critical(
+                        self,
+                        "Error",
+                        f"No se pudo restaurar el backup:\n{mensaje}"
+                    )
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Error al restaurar backup: {str(e)}"
+            )
 
     def cargar_configuraciones(self):
         """Carga las configuraciones desde la base de datos"""

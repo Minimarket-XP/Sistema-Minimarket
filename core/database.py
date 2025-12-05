@@ -257,6 +257,7 @@ class Database:
                     xml_path TEXT,
                     pdf_path TEXT,
                     estado_sunat TEXT,
+                    respuesta_api TEXT,
                     id_venta TEXT NOT NULL,
                     FOREIGN KEY (id_venta) REFERENCES ventas (id_venta),
                     CHECK (
@@ -265,6 +266,16 @@ class Database:
                     )
                 )
             ''')
+            
+            # Migrar tabla comprobante: agregar columna respuesta_api si no existe
+            try:
+                cursor.execute("PRAGMA table_info(comprobante)")
+                columns = [row[1] for row in cursor.fetchall()]
+                if 'respuesta_api' not in columns:
+                    cursor.execute("ALTER TABLE comprobante ADD COLUMN respuesta_api TEXT")
+                    print("✓ Columna 'respuesta_api' agregada a tabla comprobante")
+            except Exception as e:
+                print(f"Info: {e}")
 
             # Tabla de devoluciones
             cursor.execute('''

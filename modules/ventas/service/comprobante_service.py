@@ -7,6 +7,7 @@ import requests
 import sqlite3
 from datetime import datetime
 from core.database import db
+from modules.ventas.service.nubefact_service import NubefactService
 
 class ComprobanteService:
     def __init__(self):
@@ -23,6 +24,14 @@ class ComprobanteService:
         
         # Crear carpeta para comprobantes
         self.COMPROBANTES_DIR = self._crear_carpeta_comprobantes()
+        
+        # Cargar series desde .env
+        self.SERIE_BOLETA = env.get('NUBEFACT_SERIE_BOLETA', 'B001').strip()
+        self.SERIE_FACTURA = env.get('NUBEFACT_SERIE_FACTURA', 'F001').strip()
+        self.SERIE_NOTA_CREDITO = env.get('NUBEFACT_SERIE_NOTA_CREDITO', 'BC01').strip()
+        
+        # Inicializar servicio Nubefact
+        self.nubefact = NubefactService()
 
 # → Carga las credenciales de API desde .env
     def _cargar_env(self):
@@ -256,9 +265,15 @@ class ComprobanteService:
         return row[0] if row else ''
 
     def _siguiente_numero(self, tipo):
-        """Calcula el siguiente número de comprobante"""
+        """Calcula el siguiente número de comprobante usando series del .env"""
         tipo = str(tipo).lower()
-        serie = 'B001' if tipo == 'boleta' else 'F001'
+        if tipo == 'boleta':
+            serie = self.SERIE_BOLETA
+        elif tipo == 'factura':
+            serie = self.SERIE_FACTURA
+        else:  # nota_credito
+            serie = self.SERIE_NOTA_CREDITO
+        
         conn = db.get_connection()
         cur = conn.cursor()
         cur.execute(
@@ -321,22 +336,9 @@ class ComprobanteService:
         # Generar código del comprobante
         codigo_comprobante = f"{serie}-{str(numero).zfill(8)}"
         
-        # Generar archivos PDF y XML
+        # Ya no generamos PDF/XML local - Nubefact genera los oficiales de SUNAT
         pdf_path = None
         xml_path = None
-        try:
-            pdf_path = self._generar_pdf_comprobante(
-                codigo_comprobante, tipo_norm, serie, numero,
-                fecha_emision, num_doc, nombre_cli, razon_social,
-                direccion, monto_total, metodo_pago, venta_id
-            )
-            xml_path = self._generar_xml_comprobante(
-                codigo_comprobante, tipo_norm, serie, numero,
-                fecha_emision, num_doc, nombre_cli, razon_social,
-                direccion, monto_total, metodo_pago, venta_id
-            )
-        except Exception as e:
-            print(f"Error generando archivos: {e}")
 
         # Insertar comprobante en BD
         cur.execute(
@@ -358,6 +360,49 @@ class ComprobanteService:
         conn.commit()
         conn.close()
 
+        # Emitir comprobante a SUNAT vía Nubefact
+        nubefact_result = None
+        pdf_sunat = None
+        xml_sunat = None
+        cdr_sunat = None
+        try:
+            # Preparar datos del cliente para Nubefact
+            cliente_nubefact = {}
+            if tipo_norm == 'boleta':
+                cliente_nubefact = {
+                    'dni': num_doc or '00000000',
+                    'nombre_completo': nombre_cli or 'Cliente Genérico'
+                }
+                success, nubefact_result, error = self.nubefact.emitir_boleta(venta_id, cliente_nubefact)
+            else:  # factura
+                cliente_nubefact = {
+                    'ruc': num_doc,
+                    'razon_social': razon_social,
+                    'direccion': direccion or ''
+                }
+                success, nubefact_result, error = self.nubefact.emitir_factura(venta_id, cliente_nubefact)
+            
+            if success and nubefact_result:
+                # Extraer enlaces de Nubefact (respuesta directa de la API)
+                pdf_sunat = nubefact_result.get('enlace_del_pdf', '')
+                xml_sunat = nubefact_result.get('enlace_del_xml', '')
+                cdr_sunat = nubefact_result.get('enlace_del_cdr', '')
+                
+                # Actualizar comprobante con enlaces de SUNAT
+                conn = db.get_connection()
+                cur = conn.cursor()
+                cur.execute("""
+                    UPDATE comprobante 
+                    SET respuesta_api = ?, estado_sunat = 'aceptado'
+                    WHERE id_comprobante = ?
+                """, (json.dumps(nubefact_result), cid))
+                conn.commit()
+                conn.close()
+            else:
+                print(f"⚠️ No se pudo emitir a SUNAT: {error if 'error' in locals() else 'Error desconocido'}")
+        except Exception as e:
+            print(f"⚠️ Error al emitir a SUNAT vía Nubefact: {e}")
+
         return {
             'success': True,
             'id': cid,
@@ -366,7 +411,11 @@ class ComprobanteService:
             'numero': numero,
             'codigo': codigo_comprobante,
             'pdf_path': pdf_path,
-            'xml_path': xml_path
+            'xml_path': xml_path,
+            'pdf_sunat': pdf_sunat,
+            'xml_sunat': xml_sunat,
+            'cdr_sunat': cdr_sunat,
+            'nubefact_result': nubefact_result
         }
     
     def _generar_pdf_comprobante(self, codigo, tipo, serie, numero, fecha, num_doc,

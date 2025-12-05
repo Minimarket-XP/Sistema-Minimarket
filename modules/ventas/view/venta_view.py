@@ -678,21 +678,45 @@ class VentasFrame(QWidget):
                 xml_path = resultado.get('xml_path', '')
                 
                 # Construir mensaje informativo
-                mensaje = f"{tipo_comp} emitida correctamente\n\n"
-                mensaje += f"Serie-Número: {serie}-{numero}\n"
-                mensaje += f"Código: {codigo}\n"
-                mensaje += f"Método de pago: {metodo_pago.upper()}\n\n"
+                mensaje = f"✅ {tipo_comp} emitida correctamente\n\n"
+                mensaje += f"📋 Serie-Número: {serie}-{numero}\n"
+                mensaje += f"🔑 Código: {codigo}\n"
+                mensaje += f"💰 Método de pago: {metodo_pago.upper()}\n\n"
                 
-                if pdf_path:
-                    mensaje += f"📄 PDF: {pdf_path}\n"
-                if xml_path:
-                    mensaje += f"📝 XML: {xml_path}\n"
+                # Enlaces de SUNAT (Nubefact)
+                pdf_sunat = resultado.get('pdf_sunat')
+                xml_sunat = resultado.get('xml_sunat')
+                cdr_sunat = resultado.get('cdr_sunat')
                 
-                QMessageBox.information(
-                    self,
-                    "Venta y Comprobante Exitoso",
-                    mensaje
-                )
+                if pdf_sunat:
+                    mensaje += f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    mensaje += f"📄 DOCUMENTOS ELECTRÓNICOS SUNAT:\n\n"
+                    mensaje += f"• PDF: {pdf_sunat}\n"
+                    if xml_sunat:
+                        mensaje += f"• XML: {xml_sunat}\n"
+                    if cdr_sunat:
+                        mensaje += f"• CDR: {cdr_sunat}\n"
+                    mensaje += f"\n💡 Copia el enlace o haz clic en 'Abrir PDF SUNAT'\n"
+                else:
+                    mensaje += f"\n⚠️ Comprobante registrado localmente\n"
+                    mensaje += f"No se pudo emitir a SUNAT en este momento\n"
+                
+                # Crear diálogo personalizado con botón para abrir PDF
+                dialogo = QMessageBox(self)
+                dialogo.setWindowTitle("✅ Venta y Comprobante Exitoso")
+                dialogo.setText(mensaje)
+                dialogo.setIcon(QMessageBox.Information)
+                
+                if pdf_sunat:
+                    btn_abrir = dialogo.addButton("🌐 Abrir PDF SUNAT", QMessageBox.ActionRole)
+                    dialogo.addButton("Cerrar", QMessageBox.AcceptRole)
+                    dialogo.exec_()
+                    
+                    if dialogo.clickedButton() == btn_abrir:
+                        import webbrowser
+                        webbrowser.open(pdf_sunat)
+                else:
+                    dialogo.exec_()
             else:
                 error = resultado.get('error', 'Error desconocido')
                 QMessageBox.warning(

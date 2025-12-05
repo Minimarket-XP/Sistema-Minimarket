@@ -48,6 +48,17 @@ def main():
         # Configurar propiedades de la aplicación
         app.setApplicationName("Sistema Minimarket Don Manuelito")
         app.setApplicationVersion("2.1.0 - MVP")
+        
+        # Iniciar servicio de backup automático
+        try:
+            from modules.sistema.backup_service import backup_service
+            success, mensaje = backup_service.iniciar_backup_automatico()
+            if success:
+                print(f"✓ {mensaje}")
+            else:
+                print(f"⚠ {mensaje}")
+        except Exception as backup_error:
+            print(f"Advertencia: No se pudo iniciar backup automático: {backup_error}")
 
         # Importar y crear la ventana principal de login
         from modules.seguridad.view.login import LoginVentana
