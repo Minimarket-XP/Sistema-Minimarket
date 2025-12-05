@@ -61,11 +61,8 @@ def validar_numero(valor, tipo="float"): # → Valida y convierte el valor a nú
     except:
         return 0, False
 
-def validar_dni(numero): # → Valida formato de DNI peruano (8 dígitos)
-    """
-    Valida que el DNI tenga exactamente 8 dígitos numéricos
-    Retorna: (True/False, mensaje)
-    """
+# → Validación formato de DNI 
+def validar_dni(numero): 
     numero = str(numero).strip()
     if not numero:
         return False, "DNI no puede estar vacío"
@@ -75,12 +72,8 @@ def validar_dni(numero): # → Valida formato de DNI peruano (8 dígitos)
         return False, "DNI debe tener exactamente 8 dígitos"
     return True, "DNI válido"
 
-def validar_ruc(numero): # → Valida formato de RUC peruano (11 dígitos)
-    """
-    Valida que el RUC tenga exactamente 11 dígitos numéricos
-    y comience con 10, 15, 16, 17 o 20
-    Retorna: (True/False, mensaje)
-    """
+# → Validación formato de RUC
+def validar_ruc(numero): 
     numero = str(numero).strip()
     if not numero:
         return False, "RUC no puede estar vacío"
@@ -92,7 +85,8 @@ def validar_ruc(numero): # → Valida formato de RUC peruano (11 dígitos)
         return False, "RUC debe comenzar con 10, 15, 16, 17 o 20"
     return True, "RUC válido"
 
-def formatear_documento(tipo, numero): # → Formatea DNI/RUC para mostrar
+# → Formatea DNI/RUC para mostrar
+def formatear_documento(tipo, numero):
     """
     Formatea un número de documento para visualización
     DNI: 12345678 → 12345678

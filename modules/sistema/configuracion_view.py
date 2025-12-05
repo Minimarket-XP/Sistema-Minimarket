@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QPushButton, QLineEdit, QMessageBox, QGroupBox,
                              QFormLayout, QScrollArea, QSpinBox, QComboBox)
 from PyQt5.QtCore import Qt
+from shared.styles import TITULO
 from modules.sistema.models.configuracion_model import ConfiguracionModel
 from core.config import *
 
@@ -24,15 +25,7 @@ class ConfiguracionWidget(QWidget):
         # Título
         titulo = QLabel("Configuración del Sistema")
         titulo.setAlignment(Qt.AlignCenter)
-        titulo.setStyleSheet(f"""
-            QLabel {{
-                color: {THEME_COLOR};
-                font-size: 24px;
-                font-weight: bold;
-                font-family: Roboto;
-                margin-bottom: 20px;
-            }}
-        """)
+        titulo.setStyleSheet(TITULO)
         main_layout.addWidget(titulo)
 
         # Verificar permisos de administrador

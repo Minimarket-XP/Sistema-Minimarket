@@ -16,6 +16,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QPushButton, QTabWidget, QDateEdit, QComboBox, QFileDialog, QMessageBox,
                              QTableWidget, QTableWidgetItem, QSizePolicy)
 from PyQt5.QtCore import Qt, QDate
+from shared.styles import TITULO
 from modules.ventas.service.venta_service import VentaService
 from modules.reportes.exportador_service import exportar_pdf, exportar_excel
 import pandas as pd
@@ -35,19 +36,7 @@ class ReportesFrame(QWidget):
         # Título con estilo moderno
         titulo = QLabel("Reportes y Análisis")
         titulo.setAlignment(Qt.AlignCenter)
-        titulo.setStyleSheet("""
-            QLabel {
-                font-size: 26px;
-                font-weight: bold;
-                color: #2c3e50;
-                padding: 15px;
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #3498db, stop:1 #2980b9);
-                color: white;
-                border-radius: 8px;
-                margin-bottom: 10px;
-            }
-        """)
+        titulo.setStyleSheet(TITULO)
         layout.addWidget(titulo)
 
         # Panel de filtros con fondo y bordes

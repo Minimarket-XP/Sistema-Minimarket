@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushBut
                              QAbstractItemView, QDoubleSpinBox, QCompleter)
 from PyQt5.QtCore import Qt
 from core.config import *
+from shared.styles import TITULO, TablaNoEditableCSS, FRAME_STYLE
 from modules.ventas.service.devolucion_service import DevolucionService
 from shared.helpers import formatear_precio
 from modules.productos.view.inventario_view import TablaNoEditable
@@ -21,43 +22,6 @@ logger = logging.getLogger(__name__)
 # Constantes
 LIMITE_AUTOCOMPLETADO = 100
 LIMITE_HISTORICO = 50
-
-FRAME_STYLE = """QFrame { background-color: #f0f0f0; border-radius: 3px; }"""
-TABLE_STYLE = """
-            QTableWidget {
-                background-color: white;
-                selection-background-color: #3498db;
-                selection-color: white;
-                gridline-color: #e0e0e0;
-                font-size: 13px;
-            }
-            QTableWidget::item {
-                padding: 6px;
-            }
-            QHeaderView::section {
-                background-color: #e0e0e0;
-                border: 1px solid #ddd;
-                padding: 8px;
-                font-weight: bold;
-                font-size: 12px;
-            }
-            QScrollBar:vertical {
-                background: #ecf0f1;
-                width: 12px;
-                margin: 0px 0px 0px 0px;
-                border-radius: 4px;
-            }
-            QScrollBar::handle:vertical {
-                background: #bdc3c7;
-                min-height: 20px;
-                border-radius: 4px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background: #95a5a6;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                height: 0px;
-            }"""
 
 class DevolucionesFrame(QWidget):
     def __init__(self, parent):
@@ -79,15 +43,7 @@ class DevolucionesFrame(QWidget):
         # Título
         titulo = QLabel("Gestión de Devoluciones")
         titulo.setAlignment(Qt.AlignCenter)
-        titulo.setStyleSheet(f"""
-            QLabel {{
-                color: {THEME_COLOR};
-                font-size: 28px;
-                font-weight: bold;
-                font-family: Roboto;
-                margin-bottom: 10px;
-            }}
-        """)
+        titulo.setStyleSheet(TITULO)
         main_layout.addWidget(titulo)
         
         # Panel superior - Búsqueda de venta
@@ -185,7 +141,7 @@ class DevolucionesFrame(QWidget):
         
         # Tabla de productos
         self.tabla_productos = TablaNoEditable()
-        self.tabla_productos.setStyleSheet(TABLE_STYLE)
+        self.tabla_productos.setStyleSheet(TablaNoEditableCSS)
         
         columnas = ["ID Producto", "Nombre", "Cantidad Vendida", "Precio Unit.", "Subtotal", "Cant. a Devolver"]
         self.tabla_productos.setColumnCount(len(columnas))
@@ -340,7 +296,7 @@ class DevolucionesFrame(QWidget):
 
         # Tabla de histórico
         self.tabla_historico = TablaNoEditable()
-        self.tabla_historico.setStyleSheet(TABLE_STYLE)
+        self.tabla_historico.setStyleSheet(TablaNoEditableCSS)
 
         columnas = ["ID Devolución", "ID Venta", "Fecha", "Motivo",
                     "Monto Devuelto", "Tipo", "Estado"]

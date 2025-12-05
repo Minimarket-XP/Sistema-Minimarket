@@ -332,9 +332,17 @@ class DialogoComprobante(QDialog):
             )
             return
 
-        # Confirmar (si es genérico, datos_cliente siempre está definido)
-        tipo_comp = "Boleta" if self.datos_cliente and self.datos_cliente.get('tipo') == 'boleta' else "Factura"
-        cliente_info = self.datos_cliente.get('nombre_completo') if self.datos_cliente and tipo_comp == "Boleta" else (self.datos_cliente.get('razon_social') if self.datos_cliente else "")
+        # Confirmar - determinar tipo según datos del cliente
+        if self.datos_cliente:
+            tipo_comp = "Boleta" if self.datos_cliente.get('tipo') == 'boleta' else "Factura"
+            if tipo_comp == "Boleta":
+                cliente_info = self.datos_cliente.get('nombre_completo', 'Cliente Genérico')
+            else:
+                cliente_info = self.datos_cliente.get('razon_social', '')
+        else:
+            # Fallback si no hay datos (no debería llegar aquí)
+            tipo_comp = "Boleta"
+            cliente_info = "Cliente Genérico"
 
         reply = QMessageBox.question(
             self,
